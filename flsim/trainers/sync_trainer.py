@@ -405,6 +405,38 @@ class SyncTrainer(FLTrainer):
             )
             self.server.receive_update_from_client(Message(client_delta, weight))
 
+    def _update_clients_malicious(
+        self,
+        clients: Iterable[Client],
+        server_state_message: Message,
+        malicious_count,
+        attack_type,
+        attack_param,
+        check_type,
+        check_sample_count,
+        metrics_reporter: Optional[IFLMetricsReporter] = None,
+    ) -> None:
+        """Update each client-side model from server message with malicious updates."""
+
+        client_id = 0
+        for client in clients:
+            if client_id < malicious_count:
+                client_delta, weight = client.generate_local_update(
+                    message=server_state_message,
+                    attack_type=attack_type,
+                    attack_param=attack_param,
+                    metrics_reporter=metrics_reporter,
+                )
+                self.server.receive_update_from_client(Message(client_delta, weight))
+            else:
+                client_delta, weight = client.generate_local_update(
+                    message=server_state_message,
+                    attack_type="no_attack",
+                    metrics_reporter=metrics_reporter,
+                )
+                self.server.receive_update_from_client(Message(client_delta, weight))
+            client_id += 1
+
     def _train_one_round(
         self,
         timeline: Timeline,

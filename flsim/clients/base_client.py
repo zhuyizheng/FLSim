@@ -130,7 +130,10 @@ class Client:
         return self._name
 
     def generate_local_update(
-        self, message: Message, metrics_reporter: Optional[IFLMetricsReporter] = None
+        self, message: Message,
+        attack_type,
+        attack_param = {},
+        metrics_reporter: Optional[IFLMetricsReporter] = None
     ) -> Tuple[IFLModel, float]:
         """Wrapper around all functions called on a client for generating an updated
         local model.
@@ -156,6 +159,26 @@ class Client:
         delta = self.compute_delta(
             before=model, after=updated_model, model_to_save=updated_model
         )
+
+        ### yizheng 20231024 normalize delta
+        print("*** computing delta! ***")
+        print("delta norm before:", self.l2norm(delta).item())
+
+        print("*** normalizing delta! ***")
+        delta = self.normalize_delta(model_to_save=delta)
+        print("delta norm after:", self.l2norm(delta).item())
+
+        if attack_type == 'no_attack':
+            print("no attack")
+            pass
+        elif attack_type == 'scale':
+            print("scale, to be implemented")
+        elif attack_type == 'noise':
+            print("noise, to be implemented")
+        elif attack_type == 'flip':
+            print("flip, to be implemented")
+        else:
+            raise ValueError("attack_type incorrect!")
 
         # 6. Track the state of the client
         self.track(delta=delta, weight=weight, optimizer=optimizer)
@@ -209,6 +232,20 @@ class Client:
             difference=model_to_save.fl_get_module(),
         )
         return model_to_save
+
+
+    # yizheng 20231024 compute l2 norm of model
+    def l2norm(self, model_to_save: IFLModel):
+        """Computes the L2 norm of the model"""
+        return FLModelParamUtils.l2norm(model_to_save.fl_get_module())
+
+
+    # yizheng 20231024 normalize model
+    def normalize_delta(self, model_to_save: IFLModel) -> IFLModel:
+        """Normalizes the delta to L2 norm 1"""
+        FLModelParamUtils.normalize_model(model_to_save.fl_get_module())
+        return model_to_save
+
 
     def receive_through_channel(self, model: IFLModel) -> IFLModel:
         """Receives a reference to a state (referred to as model state_dict) over the

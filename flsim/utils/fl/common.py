@@ -110,6 +110,42 @@ class FLModelParamUtils:
 
         cls.load_state_dict(model_to_save, global_params, only_federated_params)
 
+
+    # yizheng 20231024 compute l2 norm of model
+    @classmethod
+    def l2norm(
+        cls,
+        model_to_save: nn.Module,
+        only_federated_params: bool = False,
+    ) -> None:
+        """sets model_to_save to have norm = 1"""
+        global_params = cls.get_state_dict(model_to_save, only_federated_params)
+
+        normsq = 0.0
+        with torch.no_grad():
+            for name, global_param in global_params.items():
+                normsq += torch.norm(global_param.data) ** 2
+        return torch.sqrt(normsq)
+
+
+    # yizheng 20231024 normalize model
+    @classmethod
+    def normalize_model(
+        cls,
+        model_to_save: nn.Module,
+        only_federated_params: bool = False,
+    ) -> None:
+        """sets model_to_save to have norm = 1"""
+        global_params = cls.get_state_dict(model_to_save, only_federated_params)
+
+        norm = cls.l2norm(model_to_save, only_federated_params)
+        eps = 1e-8
+        with torch.no_grad():
+            for name, global_param in global_params.items():
+                global_param.data /= (norm + eps)
+
+        cls.load_state_dict(model_to_save, global_params, only_federated_params)
+
     @classmethod
     def average_models(
         cls,
