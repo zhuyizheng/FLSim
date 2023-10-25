@@ -117,15 +117,35 @@ class FLModelParamUtils:
         cls,
         model_to_save: nn.Module,
         only_federated_params: bool = False,
+    ):
+        """sets model_to_save to have norm = 1"""
+        global_params = cls.get_state_dict(model_to_save, only_federated_params)
+
+        normsq = None
+        with torch.no_grad():
+            for name, global_param in global_params.items():
+                if normsq is None:
+                    normsq = torch.sum(torch.square(global_param.data))
+                else:
+                    normsq += torch.sum(torch.square(global_param.data))
+        return torch.sqrt(normsq)
+
+    # yizheng 20231024 scale model by scale_factor (could be negative)
+    @classmethod
+    def scale_model(
+        cls,
+        model_to_save: nn.Module,
+        scale_factor,
+        only_federated_params: bool = False,
     ) -> None:
         """sets model_to_save to have norm = 1"""
         global_params = cls.get_state_dict(model_to_save, only_federated_params)
 
-        normsq = 0.0
         with torch.no_grad():
             for name, global_param in global_params.items():
-                normsq += torch.norm(global_param.data) ** 2
-        return torch.sqrt(normsq)
+                global_param.data *= scale_factor
+
+        cls.load_state_dict(model_to_save, global_params, only_federated_params)
 
 
     # yizheng 20231024 normalize model
@@ -136,13 +156,53 @@ class FLModelParamUtils:
         only_federated_params: bool = False,
     ) -> None:
         """sets model_to_save to have norm = 1"""
-        global_params = cls.get_state_dict(model_to_save, only_federated_params)
-
         norm = cls.l2norm(model_to_save, only_federated_params)
         eps = 1e-8
+        cls.scale_model(model_to_save, 1 / (norm + eps))
+
+
+    # yizheng 20231024 rescale model
+    @classmethod
+    def rescale_model(
+        cls,
+        model_to_save: nn.Module,
+        signed_scaled_norm,
+        only_federated_params: bool = False,
+    ) -> None:
+        """sets model_to_save to have norm = 1"""
+        norm = cls.l2norm(model_to_save, only_federated_params)
+        eps = 1e-8
+        cls.scale_model(model_to_save, signed_scaled_norm / (norm + eps))
+
+
+    # yizheng 20231024 trim model
+    @classmethod
+    def trim_model(
+        cls,
+        model_to_save: nn.Module,
+        norm_bound,
+        only_federated_params: bool = False,
+    ) -> None:
+        """sets model_to_save to have norm = 1"""
+        norm = cls.l2norm(model_to_save, only_federated_params)
+        eps = 1e-8
+        cls.scale_model(model_to_save, norm_bound / torch.clamp(norm + eps, min=norm_bound))
+
+    # yizheng 20231025 add noise to model
+    @classmethod
+    def add_noise_to_model(
+        cls,
+        model_to_save: nn.Module,
+        noise_std,
+        only_federated_params: bool = False,
+    ) -> None:
+        """sets model_to_save to have norm = 1"""
+        global_params = cls.get_state_dict(model_to_save, only_federated_params)
+
         with torch.no_grad():
             for name, global_param in global_params.items():
-                global_param.data /= (norm + eps)
+                global_param.data += torch.normal(mean=torch.zeros_like(global_param.data),
+                                                  std=noise_std * torch.ones_like(global_param.data))
 
         cls.load_state_dict(model_to_save, global_params, only_federated_params)
 

@@ -129,10 +129,14 @@ class Client:
     def name(self) -> str:
         return self._name
 
+
+    ### yizheng 20231024 attacks
     def generate_local_update(
         self, message: Message,
-        attack_type,
-        attack_param = {},
+        attack_type=None,
+        attack_param=None,
+        check_type=None,
+        check_param=None,
         metrics_reporter: Optional[IFLMetricsReporter] = None
     ) -> Tuple[IFLModel, float]:
         """Wrapper around all functions called on a client for generating an updated
@@ -149,7 +153,8 @@ class Client:
         self.global_round_num = message.global_round_num
 
         updated_model, weight, optimizer = self.copy_and_train_model(
-            model, metrics_reporter=metrics_reporter
+            model, metrics_reporter=metrics_reporter,
+            attack_type=attack_type, attack_param=attack_param
         )
         # 4. Store updated model if being tracked
         if self.store_last_updated_model:
@@ -160,23 +165,31 @@ class Client:
             before=model, after=updated_model, model_to_save=updated_model
         )
 
-        ### yizheng 20231024 normalize delta
+        ### yizheng 20231024 attacks
         print("*** computing delta! ***")
         print("delta norm before:", self.l2norm(delta).item())
 
-        print("*** normalizing delta! ***")
-        delta = self.normalize_delta(model_to_save=delta)
-        print("delta norm after:", self.l2norm(delta).item())
 
         if attack_type == 'no_attack':
             print("no attack")
-            pass
+            # print("*** normalizing delta! ***")
+            if check_param is None:
+                norm_bound = 1.0
+            else:
+                norm_bound = check_param['norm_bound']
+            # delta = self.trim_delta(model_to_save=delta, norm_bound=check_param['norm_bound'])
+            delta = self.trim_delta(model_to_save=delta, norm_bound=norm_bound)
+            print("delta norm after:", self.l2norm(delta).item())
+            # TODO: other check types
         elif attack_type == 'scale':
-            print("scale, to be implemented")
+            delta = self.rescale_delta(model_to_save=delta, signed_scaled_norm=check_param['norm_bound'] * attack_param['scale_factor'])
+            print("scale, delta norm after:", self.l2norm(delta).item())
         elif attack_type == 'noise':
-            print("noise, to be implemented")
+            delta = self.add_noise_to_delta(model_to_save=delta, noise_std=attack_param['noise_std'])
+            print("noise, delta norm after:", self.l2norm(delta).item())
         elif attack_type == 'flip':
-            print("flip, to be implemented")
+            print("flip")
+            pass
         else:
             raise ValueError("attack_type incorrect!")
 
@@ -185,12 +198,15 @@ class Client:
 
         return delta, weight
 
+    ### yizheng 20231025 flip attack
     def copy_and_train_model(
         self,
         model: IFLModel,
         epochs: Optional[int] = None,
         optimizer: Optional[torch.optim.Optimizer] = None,
         optimizer_scheduler: Optional[OptimizerScheduler] = None,
+        attack_type=None,
+        attack_param=None,
         metrics_reporter: Optional[IFLMetricsReporter] = None,
     ) -> Tuple[IFLModel, float, torch.optim.Optimizer]:
         """Copy the source model to client-side model and use it to train on the
@@ -212,11 +228,14 @@ class Client:
             default_scheduler if optimizer_scheduler is None else optimizer_scheduler
         )
 
+        ### yizheng 20231025 flip attack
         # 3. Kick off training on client
         updated_model, weight = self.train(
             updated_model,
             optim,
             optim_scheduler,
+            attack_type=attack_type,
+            attack_param=attack_param,
             metrics_reporter=metrics_reporter,
             epochs=epochs,
         )
@@ -244,6 +263,24 @@ class Client:
     def normalize_delta(self, model_to_save: IFLModel) -> IFLModel:
         """Normalizes the delta to L2 norm 1"""
         FLModelParamUtils.normalize_model(model_to_save.fl_get_module())
+        return model_to_save
+
+    # yizheng 20231024 rescale model (signed_scaled_norm could be <0, meaning flip sign)
+    def rescale_delta(self, model_to_save: IFLModel, signed_scaled_norm) -> IFLModel:
+        """Normalizes the delta to L2 norm 1"""
+        FLModelParamUtils.rescale_model(model_to_save.fl_get_module(), signed_scaled_norm)
+        return model_to_save
+
+    # yizheng 20231024 trim model (norm_bound > 0)
+    def trim_delta(self, model_to_save: IFLModel, norm_bound) -> IFLModel:
+        """Normalizes the delta to L2 norm 1"""
+        FLModelParamUtils.trim_model(model_to_save.fl_get_module(), norm_bound)
+        return model_to_save
+
+    # yizheng 20231025 add noise to model
+    def add_noise_to_delta(self, model_to_save: IFLModel, noise_std) -> IFLModel:
+        """Normalizes the delta to L2 norm 1"""
+        FLModelParamUtils.add_noise_to_model(model_to_save.fl_get_module(), noise_std)
         return model_to_save
 
 
@@ -291,11 +328,14 @@ class Client:
         )
         return self.timeout_simulator.user_timeout(training_time)
 
+    ### yizheng 20231025 flip label attack
     def train(
         self,
         model: IFLModel,
         optimizer: Any,
         optimizer_scheduler: OptimizerScheduler,
+        attack_type=None,
+        attack_param=None,
         metrics_reporter: Optional[IFLMetricsReporter] = None,
         epochs: Optional[int] = None,
     ) -> Tuple[IFLModel, float]:
@@ -330,6 +370,13 @@ class Client:
             if self.cfg.shuffle_batch_order:
                 random.shuffle(dataset)
             for batch in dataset:
+
+                ### yizheng 20231025 flip label attack
+                if attack_type == 'flip':
+                    mask1 = (batch['labels'] == attack_param['label_1'])
+                    batch['labels'][mask1] = attack_param['label_2']
+                    # print("flipped labels, number of labels flipped:!", torch.sum(mask1).item())
+                # print("batch labels:", batch['labels'])
                 sample_count = self._batch_train(
                     model=model,
                     optimizer=optimizer,

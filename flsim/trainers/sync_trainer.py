@@ -146,6 +146,8 @@ class SyncTrainer(FLTrainer):
         self.clients[dataset_id] = client
         return self.clients[dataset_id]
 
+
+### yizheng 20231025 attack and check
     def train(
         self,
         data_provider: IFLDataProvider,
@@ -153,6 +155,11 @@ class SyncTrainer(FLTrainer):
         num_total_users: int,
         distributed_world_size: int,
         rank: int = 0,
+        malicious_count=0,
+        attack_type=None,
+        attack_param=None,
+        check_type=None,
+        check_param=None,
     ) -> Tuple[IFLModel, Any]:
         """Trains and evaluates the model, modifying the model state. Iterates over the
         number of epochs specified in the config, and for each epoch iterates over the
@@ -265,6 +272,11 @@ class SyncTrainer(FLTrainer):
                     clients=clients,
                     agg_metric_clients=agg_metric_clients,
                     users_per_round=users_per_round,
+                    malicious_count=malicious_count,
+                    attack_type=attack_type,
+                    attack_param=attack_param,
+                    check_type=check_type,
+                    check_param=check_param,
                     metrics_reporter=metrics_reporter
                     if self.cfg.report_train_metrics
                     else None,
@@ -391,29 +403,31 @@ class SyncTrainer(FLTrainer):
     def _save_model_and_metrics(self, model: IFLModel, best_model_state):
         model.fl_get_module().load_state_dict(best_model_state)
 
+    # def _update_clients(
+    #     self,
+    #     clients: Iterable[Client],
+    #     server_state_message: Message,
+    #     metrics_reporter: Optional[IFLMetricsReporter] = None,
+    # ) -> None:
+    #     """Update each client-side model from server message."""
+    #     for client in clients:
+    #         client_delta, weight = client.generate_local_update(
+    #             message=server_state_message,
+    #             metrics_reporter=metrics_reporter,
+    #         )
+    #         self.server.receive_update_from_client(Message(client_delta, weight))
+
+
+    ###  yizheng 20231025 update possibly malicious clients and check the updates
     def _update_clients(
         self,
         clients: Iterable[Client],
         server_state_message: Message,
-        metrics_reporter: Optional[IFLMetricsReporter] = None,
-    ) -> None:
-        """Update each client-side model from server message."""
-        for client in clients:
-            client_delta, weight = client.generate_local_update(
-                message=server_state_message,
-                metrics_reporter=metrics_reporter,
-            )
-            self.server.receive_update_from_client(Message(client_delta, weight))
-
-    def _update_clients_malicious(
-        self,
-        clients: Iterable[Client],
-        server_state_message: Message,
-        malicious_count,
-        attack_type,
-        attack_param,
-        check_type,
-        check_sample_count,
+        malicious_count = 0,
+        attack_type = None,
+        attack_param = None,
+        check_type = None,
+        check_param = None,
         metrics_reporter: Optional[IFLMetricsReporter] = None,
     ) -> None:
         """Update each client-side model from server message with malicious updates."""
@@ -425,24 +439,33 @@ class SyncTrainer(FLTrainer):
                     message=server_state_message,
                     attack_type=attack_type,
                     attack_param=attack_param,
+                    check_type=check_type,
+                    check_param=check_param,
                     metrics_reporter=metrics_reporter,
                 )
-                self.server.receive_update_from_client(Message(client_delta, weight))
             else:
                 client_delta, weight = client.generate_local_update(
                     message=server_state_message,
-                    attack_type="no_attack",
+                    attack_type='no_attack',
+                    check_type=check_type,
+                    check_param=check_param,
                     metrics_reporter=metrics_reporter,
                 )
-                self.server.receive_update_from_client(Message(client_delta, weight))
+            self.server.receive_update_from_client(Message(client_delta, weight), check_type, check_param)
             client_id += 1
 
+    ### yizheng 20231025 attack and check
     def _train_one_round(
         self,
         timeline: Timeline,
         clients: Iterable[Client],
         agg_metric_clients: Iterable[Client],
         users_per_round: int,
+        malicious_count=0,
+        attack_type=None,
+        attack_param=None,
+        check_type=None,
+        check_param=None,
         metrics_reporter: Optional[IFLMetricsReporter] = None,
     ) -> None:
         """Trains the global model for one training round.
@@ -460,6 +483,11 @@ class SyncTrainer(FLTrainer):
             clients=clients,
             agg_metric_clients=agg_metric_clients,
             users_per_round=users_per_round,
+            malicious_count=malicious_count,
+            attack_type=attack_type,
+            attack_param=attack_param,
+            check_type=check_type,
+            check_param=check_param,
             metrics_reporter=metrics_reporter,
         )
 
@@ -474,12 +502,19 @@ class SyncTrainer(FLTrainer):
 
         self._post_train_one_round(timeline)
 
+
+    ### yizheng 20231025 attack and check
     def _train_one_round_apply_updates(
         self,
         timeline: Timeline,
         clients: Iterable[Client],
         agg_metric_clients: Iterable[Client],
         users_per_round: int,
+        malicious_count=0,
+        attack_type=None,
+        attack_param=None,
+        check_type=None,
+        check_param=None,
         metrics_reporter: Optional[IFLMetricsReporter] = None,
     ) -> Optional[List[Metric]]:
         """Apply updates to client and server models during train one round.
@@ -504,6 +539,11 @@ class SyncTrainer(FLTrainer):
         self._update_clients(
             clients=clients,
             server_state_message=server_state_message,
+            malicious_count=malicious_count,
+            attack_type=attack_type,
+            attack_param=attack_param,
+            check_type=check_type,
+            check_param=check_param,
             metrics_reporter=metrics_reporter,
         )
         self.logger.info(f"Collecting round's clients took {time() - t} s.")

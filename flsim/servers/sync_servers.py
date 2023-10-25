@@ -192,15 +192,44 @@ class SyncServer(ISyncServer):
         self._aggregator.zero_weights()
         self._optimizer.zero_grad()
 
-    def receive_update_from_client(self, message: Message):
+
+    ### yizheng 20231025 add checks
+    def check(self, delta, check_type, check_param):
+        if check_type == 'no_check':
+            return True
+        if check_type == 'strict':
+            if check_param['pred'] == 'l2norm':
+                return FLModelParamUtils.l2norm(delta) <= 1.01 * check_param['norm_bound']
+            else:
+                raise ValueError("not implemented!")
+        if check_type == 'prob_zkp':
+            if check_param['pred'] == 'l2norm':
+                return FLModelParamUtils.l2norm(delta) <= 1.01 * check_param['norm_bound']
+                # TODO: change
+            else:
+                raise ValueError("not implemented!")
+        raise ValueError("Wrong check type!")
+
+    ### yizheng 20231025 add checks
+    def receive_update_from_client(self, message: Message,
+                                   check_type = None,
+                                   check_param = None):
+        # print("*** check type:", check_type)
+        # print("*** check param:", check_param)
+        # check_type = 'no_check'
         message = self._channel.client_to_server(message)
 
-        self._aggregator.apply_weight_to_update(
-            delta=message.model.fl_get_module(), weight=message.weight
-        )
-        self._aggregator.add_update(
-            delta=message.model.fl_get_module(), weight=message.weight
-        )
+        if self.check(message.model.fl_get_module(), check_type, check_param):
+            print("check passed!")
+            self._aggregator.apply_weight_to_update(
+                delta=message.model.fl_get_module(), weight=message.weight
+            )
+            self._aggregator.add_update(
+                delta=message.model.fl_get_module(), weight=message.weight
+            )
+        else:
+            print("check failed!")
+
 
     def step(self):
         aggregated_model = self._aggregator.aggregate()
