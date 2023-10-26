@@ -432,9 +432,9 @@ class SyncTrainer(FLTrainer):
     ) -> None:
         """Update each client-side model from server message with malicious updates."""
 
-        client_id = 0
-        for client in clients:
+        for client_id, client in enumerate(clients):
             if client_id < malicious_count:
+                print("client", client_id, "malicious")
                 client_delta, weight = client.generate_local_update(
                     message=server_state_message,
                     attack_type=attack_type,
@@ -444,6 +444,7 @@ class SyncTrainer(FLTrainer):
                     metrics_reporter=metrics_reporter,
                 )
             else:
+                print("client", client_id, "honest")
                 client_delta, weight = client.generate_local_update(
                     message=server_state_message,
                     attack_type='no_attack',

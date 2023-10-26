@@ -166,12 +166,12 @@ class Client:
         )
 
         ### yizheng 20231024 attacks
-        print("*** computing delta! ***")
+        # print("*** computing delta! ***")
         print("delta norm before:", self.l2norm(delta).item())
 
 
         if attack_type == 'no_attack':
-            print("no attack")
+            # print("no attack")
             # print("*** normalizing delta! ***")
             if check_param is None:
                 norm_bound = 1.0
@@ -179,7 +179,7 @@ class Client:
                 norm_bound = check_param['norm_bound']
             # delta = self.trim_delta(model_to_save=delta, norm_bound=check_param['norm_bound'])
             delta = self.trim_delta(model_to_save=delta, norm_bound=norm_bound)
-            print("delta norm after:", self.l2norm(delta).item())
+            # print("delta norm after:", self.l2norm(delta).item())
             # TODO: other check types
         elif attack_type == 'scale':
             delta = self.rescale_delta(model_to_save=delta, signed_scaled_norm=check_param['norm_bound'] * attack_param['scale_factor'])
@@ -370,6 +370,9 @@ class Client:
             if self.cfg.shuffle_batch_order:
                 random.shuffle(dataset)
             for batch in dataset:
+                # print("batch:", batch)
+                # print("batch labels size:", batch['labels'].size())
+                # print("batch features size:", batch['features'].size())
 
                 ### yizheng 20231025 flip label attack
                 if attack_type == 'flip':

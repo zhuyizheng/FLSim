@@ -237,6 +237,7 @@ class PowerLawSharder(FLDataSharder):
     def shard_rows(self, data_rows: Shardable) -> Iterable[Tuple[str, Any]]:
         # sanity check to avoid empty shards
         shards = super().shard_rows(data_rows)
+        print("number of shards:", sum(1 for _shard in shards))
         assert (
             sum(1 for _shard in shards)
             # pyre-fixme[16]: `PowerLawSharder` has no attribute `cfg`.
