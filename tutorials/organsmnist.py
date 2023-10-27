@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import torch
 from flsim.utils.example_utils import SimpleConvNet
 from medmnist import OrganAMNIST, OrganSMNIST
@@ -39,8 +40,8 @@ test_dataset = organDataset(test_images, test_labels)
 NUM_CLIENTS = 100
 MAX_MALICIOUS_CLIENTS = 10
 # 2. Create a sharder, which maps samples in the training data to clients.
-# sharder = SequentialSharder(examples_per_shard=EXAMPLES_PER_USER)
-sharder = PowerLawSharder(num_shards=NUM_CLIENTS, alpha=0.5)
+sharder = SequentialSharder(examples_per_shard=math.ceil(train_dataset.__len__() / NUM_CLIENTS))
+# sharder = PowerLawSharder(num_shards=NUM_CLIENTS, alpha=0.5)
 
 # 3. Shard and batchify training, eval, and test data.
 fl_data_loader = DataLoader(
