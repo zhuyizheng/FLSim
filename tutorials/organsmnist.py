@@ -149,7 +149,7 @@ final_model, eval_score = trainer.train(
     metrics_reporter=metrics_reporter,
     num_total_users=data_provider.num_train_users(),
     distributed_world_size=1,
-    malicious_count=1,
+    malicious_count=MAX_MALICIOUS_CLIENTS,
     attack_type='noise',  # 'scale', 'noise', 'flip'
     attack_param={'scale_factor': -1.5,
                   'noise_std': 0.1,
