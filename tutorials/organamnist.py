@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import torch
 from flsim.utils.example_utils import SimpleConvNet
 from medmnist import OrganAMNIST, OrganSMNIST
@@ -41,8 +42,8 @@ train_dataset = organDataset(train_images, train_labels)
 test_dataset = organDataset(test_images, test_labels)
 
 # 2. Create a sharder, which maps samples in the training data to clients.
-# sharder = SequentialSharder(examples_per_shard=EXAMPLES_PER_USER)
-sharder = PowerLawSharder(num_shards=NUM_CLIENTS, alpha=0.5)
+sharder = SequentialSharder(examples_per_shard=math.ceil(train_dataset.__len__() / NUM_CLIENTS))
+# sharder = PowerLawSharder(num_shards=NUM_CLIENTS, alpha=0.5)
 
 # 3. Shard and batchify training, eval, and test data.
 fl_data_loader = DataLoader(
@@ -105,7 +106,7 @@ json_config = {
             "_base_": "base_sync_server",
             "server_optimizer": {
                 "_base_": "base_fed_avg_with_lr",
-                "lr": 2.13,
+                "lr": 0.2,
                 "momentum": 0.9
             },
             # type of user selection sampling
@@ -126,7 +127,7 @@ json_config = {
         "users_per_round": NUM_CLIENTS,
         # total number of global epochs
         # total #rounds = ceil(total_users / users_per_round) * epochs
-        "epochs": 10,
+        "epochs": 100,
         # frequency of reporting train metrics
         "train_metrics_reported_per_epoch": 100,
         # frequency of evaluation per epoch
