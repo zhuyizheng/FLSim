@@ -11,6 +11,10 @@ LOCAL_BATCH_SIZE = 32
 EXAMPLES_PER_USER = 500
 IMAGE_SIZE = 28
 
+
+NUM_CLIENTS = 100
+MAX_MALICIOUS_CLIENTS = 10
+
 # suppress large outputs
 VERBOSE = False
 
@@ -36,8 +40,6 @@ class organDataset(Dataset):
 train_dataset = organDataset(train_images, train_labels)
 test_dataset = organDataset(test_images, test_labels)
 
-NUM_CLIENTS = 10
-MAX_MALICIOUS_CLIENTS = 1
 # 2. Create a sharder, which maps samples in the training data to clients.
 # sharder = SequentialSharder(examples_per_shard=EXAMPLES_PER_USER)
 sharder = PowerLawSharder(num_shards=NUM_CLIENTS, alpha=0.5)
