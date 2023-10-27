@@ -22,20 +22,29 @@ class FLModelParamUtils:
     logger: logging.Logger = Logger.get_logger(__name__)
     logger.setLevel(logging.WARNING)
 
+### yizheng 20231027 remove num_batches_tracked
     @classmethod
     def get_state_dict(cls, model: nn.Module, only_federated_params: bool):
         if only_federated_params and isinstance(model, FLModelWithPrivateModules):
             state_dict = model.federated_state_dict()
         else:
             state_dict = model.state_dict()
-        return state_dict
+        state_dict_copy = state_dict.copy()
+        for key in state_dict.keys():
+            if key.endswith('num_batches_tracked'):
+                state_dict_copy.pop(key)
+        return state_dict_copy
 
+
+    ### yizheng 20231027 load from dict without num_batches_tracked
     @classmethod
     def load_state_dict(cls, model: nn.Module, state_dict, only_federated_params: bool):
         if only_federated_params and isinstance(model, FLModelWithPrivateModules):
             model.load_federated_state_dict(state_dict)
         else:
-            model.load_state_dict(state_dict)
+            # model.load_state_dict(state_dict)
+            ### yizheng 20231027 load from dict without num_batches_tracked
+            model.load_state_dict(state_dict, False)
 
     @classmethod
     def zero_weights(cls, model: nn.Module, only_federated_params=False) -> None:

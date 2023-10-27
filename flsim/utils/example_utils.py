@@ -214,9 +214,15 @@ class DataProvider(IFLDataProvider):
         self._train_users = self._create_fl_users(
             data_loader.fl_train_set(), eval_split=0.0
         )
+        ### yizheng reset sharder count to ensure that every shard has at least 1 row
+        self.data_loader.sharder.reset_last_shard()
+        ###
         self._eval_users = self._create_fl_users(
             data_loader.fl_eval_set(), eval_split=1.0
         )
+        ### yizheng reset sharder count to ensure that every shard has at least 1 row
+        self.data_loader.sharder.reset_last_shard()
+        ###
         self._test_users = self._create_fl_users(
             data_loader.fl_test_set(), eval_split=1.0
         )

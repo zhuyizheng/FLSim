@@ -226,6 +226,10 @@ class PowerLawSharder(FLDataSharder):
         self._weights = self._weights / sum(self._weights)
         self._choices = np.arange(0, self.cfg.num_shards)
 
+### yizheng 20231027 reset last shard counter to -1 if want to shard again
+    def reset_last_shard(self):
+        self._last_shard = -1
+
     def shard_for_row(self, csv_row: Dict[Any, Any]) -> List[int]:
         # pyre-fixme[16]: `PowerLawSharder` has no attribute `cfg`.
         if self._last_shard < self.cfg.num_shards - 1:
