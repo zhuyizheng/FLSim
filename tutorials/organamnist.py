@@ -7,14 +7,43 @@ from torch.utils.data import Dataset
 from flsim.data.data_sharder import SequentialSharder, PowerLawSharder
 from flsim.utils.example_utils import DataLoader, DataProvider
 
+import argparse
+
+# Create a parser
+parser = argparse.ArgumentParser(description="OrganAMNIST with CNN")
+
+# Define arguments
+parser.add_argument("--lr", type=float, help="global learning rate")
+
+parser.add_argument("--num-cl", type=int, help="number of clients", default=100)
+parser.add_argument("--max-mal", type=int, help="maximum number of clients", default=10)
+
+parser.add_argument("--attack", type=str, help="attack type: 'no_attack', 'scale', 'noise', 'flip'", default="no_attack")
+parser.add_argument("--scale-factor", type=float, help="scale factor if attack type is 'no_attack'", default=10)
+parser.add_argument("--noise-std", type=float, help="noise std if attack type is 'noise'", default=0.1)
+parser.add_argument("--label-1", type=int, help="the label to change from if attack type is 'flip'", default=5)
+parser.add_argument("--label-2", type=int, help="the label to change to if attack type is 'flip'", default=9)
+
+parser.add_argument("--check", type=str, help="check type: 'no_check', 'strict', 'prob_zkp'", default="no_check")
+parser.add_argument("--pred", type=str, help="check predicate: 'l2norm', 'sphere', 'cosine'", default="l2norm")
+parser.add_argument("--norm-bound", type=str, help="l2 norm bound of l2norm check or cosine check", default=0.2)
+
+
+parser.add_argument("--local-batch-size", type=int, help="local batch size", default=32)
+parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
+
+
+# Parse the command line arguments
+args = parser.parse_args()
+
 USE_CUDA = True
-LOCAL_BATCH_SIZE = 32
-EXAMPLES_PER_USER = 500
+LOCAL_BATCH_SIZE = args.local_batch_size
+# EXAMPLES_PER_USER = 500
 IMAGE_SIZE = 28
 
 
-NUM_CLIENTS = 100
-MAX_MALICIOUS_CLIENTS = 10
+NUM_CLIENTS = args.num_cl
+MAX_MALICIOUS_CLIENTS = args.max_mal
 
 # suppress large outputs
 VERBOSE = False
@@ -127,7 +156,7 @@ json_config = {
         "users_per_round": NUM_CLIENTS,
         # total number of global epochs
         # total #rounds = ceil(total_users / users_per_round) * epochs
-        "epochs": 100,
+        "epochs": args.epochs,
         # frequency of reporting train metrics
         "train_metrics_reported_per_epoch": 100,
         # frequency of evaluation per epoch
@@ -152,14 +181,14 @@ final_model, eval_score = trainer.train(
     num_total_users=data_provider.num_train_users(),
     distributed_world_size=1,
     malicious_count=MAX_MALICIOUS_CLIENTS,
-    attack_type='noise',  # 'scale', 'noise', 'flip'
-    attack_param={'scale_factor': -1.5,
-                  'noise_std': 0.1,
-                  'label_1': 5,
-                  'label_2': 9},
-    check_type='strict',  # 'no_check', 'strict', 'prob_zkp'
-    check_param={'pred': 'l2norm', # 'l2norm', 'sphere', 'cosine'
-                 'norm_bound': 0.2},
+    attack_type=args.attack,  # 'scale', 'noise', 'flip'
+    attack_param={'scale_factor': args.scale_factor,
+                  'noise_std': args.noise_std,
+                  'label_1': args.label_1,
+                  'label_2': args.label_2},
+    check_type=args.check,  # 'no_check', 'strict', 'prob_zkp'
+    check_param={'pred': args.pred, # 'l2norm', 'sphere', 'cosine'
+                 'norm_bound': args.norm_bound},
 )
 
 # We can now test our trained model.
