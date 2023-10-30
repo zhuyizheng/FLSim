@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description="OrganAMNIST with CNN")
 parser.add_argument("--lr", type=float, help="global learning rate")
 
 parser.add_argument("--num-cl", type=int, help="number of clients", default=100)
-parser.add_argument("--max-mal", type=int, help="maximum number of clients", default=10)
+parser.add_argument("--max-mal", type=int, help="maximum number of malicious clients", default=10)
 
 parser.add_argument("--attack", type=str, help="attack type: 'no_attack', 'scale', 'noise', 'flip'", default="no_attack")
 parser.add_argument("--scale-factor", type=float, help="scale factor if attack type is 'no_attack'", default=10)
@@ -32,9 +32,34 @@ parser.add_argument("--norm-bound", type=str, help="l2 norm bound of l2norm chec
 parser.add_argument("--local-batch-size", type=int, help="local batch size", default=32)
 parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
 
-
 # Parse the command line arguments
 args = parser.parse_args()
+
+print("global lr:", args.lr)
+print("number of clients:", args.num_cl)
+print("max number of malicious clients:", args.max_mal)
+print("attack type:", args.attack)
+if args.attack == 'no_attack':
+    pass
+elif args.attack == 'scale':
+    print("scale factor:", args.scale_factor)
+elif args.attack == 'noise_std':
+    print("noise std:", args.noise_std)
+elif args.attack == "flip":
+    print("label 1:", args.label_1)
+    print("label 2:", args.label_2)
+else:
+    raise ValueError("Incorrect attack type!")
+
+print("check type:", args.check)
+assert args.check in ['no_check', 'strict', 'prob_zkp']
+if args.check != 'no_check':
+    print("check pred:", args.pred)
+    print("check l2 norm bound:", args.norm_bound)
+
+print("local batch size:", args.local_batch_size)
+print("epochs:", args.epochs)
+
 
 USE_CUDA = True
 LOCAL_BATCH_SIZE = args.local_batch_size
