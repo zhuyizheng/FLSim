@@ -160,7 +160,7 @@ json_config = {
             "_base_": "base_sync_server",
             "server_optimizer": {
                 "_base_": "base_fed_avg_with_lr",
-                "lr": 0.2,
+                "lr": args.lr,
                 "momentum": 0.9
             },
             # type of user selection sampling
