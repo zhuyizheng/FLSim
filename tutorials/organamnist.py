@@ -43,7 +43,7 @@ if args.attack == 'no_attack':
     pass
 elif args.attack == 'scale':
     print("scale factor:", args.scale_factor)
-elif args.attack == 'noise_std':
+elif args.attack == 'noise':
     print("noise std:", args.noise_std)
 elif args.attack == "flip":
     print("label 1:", args.label_1)
