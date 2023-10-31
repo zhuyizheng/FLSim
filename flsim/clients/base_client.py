@@ -259,6 +259,10 @@ class Client:
         return FLModelParamUtils.l2norm(model_to_save.fl_get_module())
 
 
+    #yizheng 20231031 compute cosine
+    def cosine(self, model_to_save_1: IFLModel, model_to_save_2: IFLModel):
+        return FLModelParamUtils.cosine(model_to_save_1.fl_get_module(), model_to_save_2.fl_get_module())
+
     # yizheng 20231024 normalize model
     def normalize_delta(self, model_to_save: IFLModel) -> IFLModel:
         """Normalizes the delta to L2 norm 1"""

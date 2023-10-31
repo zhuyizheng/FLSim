@@ -127,7 +127,7 @@ class FLModelParamUtils:
         model_to_save: nn.Module,
         only_federated_params: bool = False,
     ):
-        """sets model_to_save to have norm = 1"""
+        """computes l2 norm"""
         global_params = cls.get_state_dict(model_to_save, only_federated_params)
 
         normsq = None
@@ -138,6 +138,36 @@ class FLModelParamUtils:
                 else:
                     normsq += torch.sum(torch.square(global_param.data))
         return torch.sqrt(normsq)
+
+    # yizheng 20231031 inner product
+    @classmethod
+    def inner_prod(cls,
+                   model_to_save_1: nn.Module,
+                   model_to_save_2: nn.Module,
+                   only_federated_params: bool = False,
+    ):
+        """computes inner product of two models"""
+        global_params_1 = cls.get_state_dict(model_to_save_1, only_federated_params)
+        global_params_2 = cls.get_state_dict(model_to_save_2, only_federated_params)
+        ip = None
+        with torch.no_grad():
+            for (name, global_params_1), (_, global_params_2) in zip(global_params_1.items(), global_params_2.items()):
+                if ip is None:
+                    ip = torch.sum(global_params_1 * global_params_2)
+                else:
+                    ip += torch.sum(global_params_1 * global_params_2)
+        return ip
+
+    #yizheng 20231031 cosine
+    @classmethod
+    def cosine(cls,
+               model_to_save_1: nn.Module,
+               model_to_save_2: nn.Module,
+               only_federated_params: bool = False,
+   ):
+        """computes cosine of two models"""
+        eps = 1e-8
+        return cls.inner_prod(model_to_save_1, model_to_save_2) / (cls.l2norm(model_to_save_1) * cls.l2norm(model_to_save_2) + eps)
 
     # yizheng 20231024 scale model by scale_factor (could be negative)
     @classmethod
