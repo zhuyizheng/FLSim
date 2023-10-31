@@ -456,7 +456,7 @@ class SyncTrainer(FLTrainer):
                     metrics_reporter=metrics_reporter,
                 )
                 if client_id == 0:
-                    check_param['pivot'] = client_delta
+                    check_param['pivot'] = client_delta.model
             self.server.receive_update_from_client(Message(client_delta, weight), check_type, check_param)
             client_id += 1
 
