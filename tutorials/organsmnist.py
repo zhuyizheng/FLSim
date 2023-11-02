@@ -8,10 +8,67 @@ from flsim.data.data_sharder import SequentialSharder, PowerLawSharder
 from flsim.utils.example_utils import DataLoader, DataProvider
 from torchvision.models import resnet18
 
+import argparse
+
+# Create a parser
+parser = argparse.ArgumentParser(description="OrganAMNIST with CNN")
+
+# Define arguments
+parser.add_argument("--lr", type=float, help="global learning rate")
+
+parser.add_argument("--num-cl", type=int, help="number of clients", default=100)
+parser.add_argument("--max-mal", type=int, help="maximum number of malicious clients", default=10)
+
+parser.add_argument("--attack", type=str, help="attack type: 'no_attack', 'scale', 'noise', 'flip'", default="no_attack")
+parser.add_argument("--scale-factor", type=float, help="scale factor if attack type is 'no_attack'", default=10)
+parser.add_argument("--noise-std", type=float, help="noise std if attack type is 'noise'", default=0.1)
+parser.add_argument("--label-1", type=int, help="the label to change from if attack type is 'flip'", default=5)
+parser.add_argument("--label-2", type=int, help="the label to change to if attack type is 'flip'", default=9)
+
+parser.add_argument("--check", type=str, help="check type: 'no_check', 'strict', 'prob_zkp'", default="no_check")
+parser.add_argument("--pred", type=str, help="check predicate: 'l2norm', 'sphere', 'cosine'", default="l2norm")
+parser.add_argument("--norm-bound", type=str, help="l2 norm bound of l2norm check or cosine check", default=0.2)
+
+
+parser.add_argument("--local-batch-size", type=int, help="local batch size", default=32)
+parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
+
+# Parse the command line arguments
+args = parser.parse_args()
+
+print("global lr:", args.lr)
+print("number of clients:", args.num_cl)
+print("max number of malicious clients:", args.max_mal)
+print("attack type:", args.attack)
+if args.attack == 'no_attack':
+    pass
+elif args.attack == 'scale':
+    print("scale factor:", args.scale_factor)
+elif args.attack == 'noise':
+    print("noise std:", args.noise_std)
+elif args.attack == "flip":
+    print("label 1:", args.label_1)
+    print("label 2:", args.label_2)
+else:
+    raise ValueError("Incorrect attack type!")
+
+print("check type:", args.check)
+assert args.check in ['no_check', 'strict', 'prob_zkp']
+if args.check != 'no_check':
+    print("check pred:", args.pred)
+    print("check l2 norm bound:", args.norm_bound)
+
+print("local batch size:", args.local_batch_size)
+print("epochs:", args.epochs)
+
+
 USE_CUDA = True
-LOCAL_BATCH_SIZE = 32
-EXAMPLES_PER_USER = 500
+LOCAL_BATCH_SIZE = args.local_batch_size
+# EXAMPLES_PER_USER = 500
 IMAGE_SIZE = 28
+
+NUM_CLIENTS = args.num_cl
+MAX_MALICIOUS_CLIENTS = args.max_mal
 
 # suppress large outputs
 VERBOSE = False
@@ -37,8 +94,6 @@ class organDataset(Dataset):
 train_dataset = organDataset(train_images, train_labels)
 test_dataset = organDataset(test_images, test_labels)
 
-NUM_CLIENTS = 100
-MAX_MALICIOUS_CLIENTS = 10
 # 2. Create a sharder, which maps samples in the training data to clients.
 sharder = SequentialSharder(examples_per_shard=math.ceil(train_dataset.__len__() / NUM_CLIENTS))
 # sharder = PowerLawSharder(num_shards=NUM_CLIENTS, alpha=0.5)
@@ -61,6 +116,31 @@ print(f"\nClients in total: {data_provider.num_train_users()}")
 # 1. Define our model, a simple CNN.
 # model = SimpleConvNet(in_channels=1, num_classes=11)
 model = resnet18()
+model.fc = torch.nn.Linear(512, 11)
+
+def freeze_batch_norm(module):
+    module.track_running_stats = False
+
+freeze_batch_norm(model.bn1)
+freeze_batch_norm(model.layer1._modules['0'].bn1)
+freeze_batch_norm(model.layer1._modules['0'].bn2)
+freeze_batch_norm(model.layer1._modules['1'].bn1)
+freeze_batch_norm(model.layer1._modules['1'].bn2)
+freeze_batch_norm(model.layer2._modules['0'].bn1)
+freeze_batch_norm(model.layer2._modules['0'].bn2)
+freeze_batch_norm(model.layer2._modules['0'].downsample._modules['1'])
+freeze_batch_norm(model.layer2._modules['1'].bn1)
+freeze_batch_norm(model.layer2._modules['1'].bn2)
+freeze_batch_norm(model.layer3._modules['0'].bn1)
+freeze_batch_norm(model.layer3._modules['0'].bn2)
+freeze_batch_norm(model.layer3._modules['0'].downsample._modules['1'])
+freeze_batch_norm(model.layer3._modules['1'].bn1)
+freeze_batch_norm(model.layer3._modules['1'].bn2)
+freeze_batch_norm(model.layer4._modules['0'].bn1)
+freeze_batch_norm(model.layer4._modules['0'].bn2)
+freeze_batch_norm(model.layer4._modules['0'].downsample._modules['1'])
+freeze_batch_norm(model.layer4._modules['1'].bn1)
+freeze_batch_norm(model.layer4._modules['1'].bn2)
 
 # 2. Choose where the model will be allocated.
 cuda_enabled = torch.cuda.is_available() and USE_CUDA
@@ -105,7 +185,7 @@ json_config = {
             "_base_": "base_sync_server",
             "server_optimizer": {
                 "_base_": "base_fed_avg_with_lr",
-                "lr": 2.13,
+                "lr": args.lr,
                 "momentum": 0.9
             },
             # type of user selection sampling
@@ -126,7 +206,7 @@ json_config = {
         "users_per_round": NUM_CLIENTS,
         # total number of global epochs
         # total #rounds = ceil(total_users / users_per_round) * epochs
-        "epochs": 10,
+        "epochs": args.epochs,
         # frequency of reporting train metrics
         "train_metrics_reported_per_epoch": 100,
         # frequency of evaluation per epoch
@@ -151,14 +231,14 @@ final_model, eval_score = trainer.train(
     num_total_users=data_provider.num_train_users(),
     distributed_world_size=1,
     malicious_count=MAX_MALICIOUS_CLIENTS,
-    attack_type='noise',  # 'scale', 'noise', 'flip'
-    attack_param={'scale_factor': -1.5,
-                  'noise_std': 0.1,
-                  'label_1': 5,
-                  'label_2': 9},
-    check_type='strict',  # 'no_check', 'strict', 'prob_zkp'
-    check_param={'pred': 'l2norm', # 'l2norm', 'sphere', 'cosine'
-                 'norm_bound': 0.2},
+    attack_type=args.attack,  # 'scale', 'noise', 'flip'
+    attack_param={'scale_factor': args.scale_factor,
+                  'noise_std': args.noise_std,
+                  'label_1': args.label_1,
+                  'label_2': args.label_2},
+    check_type=args.check,  # 'no_check', 'strict', 'prob_zkp'
+    check_param={'pred': args.pred, # 'l2norm', 'sphere', 'cosine'
+                 'norm_bound': args.norm_bound},
 )
 
 # We can now test our trained model.
