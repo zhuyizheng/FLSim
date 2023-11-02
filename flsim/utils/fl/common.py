@@ -31,7 +31,8 @@ class FLModelParamUtils:
             state_dict = model.state_dict()
         state_dict_copy = state_dict.copy()
         for key in state_dict.keys():
-            if key.endswith('num_batches_tracked') or key.endswith('running_mean') or key.endswith('running_var'):
+            if key.endswith('num_batches_tracked'):
+            # if key.endswith('num_batches_tracked') or key.endswith('running_mean') or key.endswith('running_var'):
                 state_dict_copy.pop(key)
 
         return state_dict_copy
