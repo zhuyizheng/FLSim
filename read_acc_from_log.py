@@ -1,5 +1,14 @@
-FILENAME = 'a_strict.txt'
-OUTPUTFILENAME = 'a_strict_acc.txt'
+import argparse
+
+parser = argparse.ArgumentParser(description="extract accuracy")
+
+parser.add_argument("input", type=str, help="input file name")
+args = parser.parse_args()
+
+FILENAME = args.input
+assert FILENAME.endswith('.txt'), "wrong input file format!"
+OUTPUTFILENAME = FILENAME[:-4] + '_acc.txt'
+
 import re
 pattern = r'Accuracy/Eval: (\d+\.\d+)'
 with open(FILENAME, 'r') as file:
