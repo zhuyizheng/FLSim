@@ -378,7 +378,7 @@ class Client:
                 # print("batch labels size:", batch['labels'].size())
                 # print("batch features size:", batch['features'].size())
 
-                batch_copy = batch.detach().clone()
+                batch_copy = {key: value.detach().clone() for key, value in batch.items()}
 
                 ### yizheng 20231025 flip label attack
                 if attack_type == 'flip':
