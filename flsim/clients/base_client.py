@@ -374,16 +374,18 @@ class Client:
                 # print("batch labels size:", batch['labels'].size())
                 # print("batch features size:", batch['features'].size())
 
+                batch_copy = batch.detach().clone()
+
                 ### yizheng 20231025 flip label attack
                 if attack_type == 'flip':
-                    mask1 = (batch['labels'] == attack_param['label_1'])
-                    batch['labels'][mask1] = attack_param['label_2']
+                    mask1 = (batch_copy['labels'] == attack_param['label_1'])
+                    batch_copy['labels'][mask1] = attack_param['label_2']
                     # print("flipped labels, number of labels flipped:!", torch.sum(mask1).item())
                 # print("batch labels:", batch['labels'])
                 sample_count = self._batch_train(
                     model=model,
                     optimizer=optimizer,
-                    training_batch=batch,
+                    training_batch=batch_copy,
                     epoch=epoch,
                     metrics_reporter=metrics_reporter,
                     optimizer_scheduler=optimizer_scheduler,
