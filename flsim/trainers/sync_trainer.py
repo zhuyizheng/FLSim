@@ -69,6 +69,9 @@ class SyncTrainer(FLTrainer):
         self.clients = {}
         self._last_report_round_after_aggregation = 0
 
+        # yizheng 20231031 pivot for cosine
+        # self.pivot = None
+
     @classmethod
     def _set_defaults_in_cfg(cls, cfg):
         """Set default configs if missing.
@@ -433,7 +436,7 @@ class SyncTrainer(FLTrainer):
         """Update each client-side model from server message with malicious updates."""
 
         for client_id, client in enumerate(clients):
-            if client_id < malicious_count:
+            if 1 <= client_id <= malicious_count:
                 print("client", client_id, "malicious")
                 client_delta, weight = client.generate_local_update(
                     message=server_state_message,
@@ -452,6 +455,8 @@ class SyncTrainer(FLTrainer):
                     check_param=check_param,
                     metrics_reporter=metrics_reporter,
                 )
+                if client_id == 0:
+                    check_param['pivot'] = client_delta.model
             self.server.receive_update_from_client(Message(client_delta, weight), check_type, check_param)
             client_id += 1
 

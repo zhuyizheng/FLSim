@@ -7,3 +7,4 @@ attack_param['label_1'], attack_param['label_2']: the labels to flip
 check_type: 'no_check', 'strict', 'prob_zkp'
 check_param['pred']: 'l2norm', 'sphere', 'cosine'
 check_param['norm_bound']: the l2 norm bound of l2norm or cosine check
+check_param['cosine_bound']: the cosine lower bound
