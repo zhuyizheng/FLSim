@@ -212,6 +212,7 @@ class SyncServer(ISyncServer):
                 if FLModelParamUtils.l2norm(delta) <= 1.01 * check_param['norm_bound']:
                     return True
                 ratio = FLModelParamUtils.l2norm(delta) / check_param['norm_bound']
+                ratio = ratio.item()
 
                 from scipy.stats import chi2
                 import random
