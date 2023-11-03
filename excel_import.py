@@ -37,7 +37,7 @@ for sheet_name in sheet_names:
         data_arrays[(sheet_name, attack)] = data_array[:, attack_index]
 
 
-def plot(sheet_name, attack, accuracies, ymin=0.5, ymax=1.0, legend=False):
+def plot(sheet_name, attack, accuracies, params):
     SMALL_SIZE = 8
     MEDIUM_SIZE = 10
     BIGGER_SIZE = 24
@@ -58,21 +58,21 @@ def plot(sheet_name, attack, accuracies, ymin=0.5, ymax=1.0, legend=False):
     plt.xlabel('epochs')
     plt.ylabel('accuracy')
 
-    if legend:
+    if params['legend']:
         plt.legend(['RiseFL', 'NP-SC', 'NP-NC'])
 
-    plt.ylim(ymin, ymax)
+    plt.ylim(params['ymin'], params['ymax'])
     plt.tight_layout()
     plt.savefig(f'{sheet_name}-{attack}.pdf', dpi=900, pad_inches=0, bbox_inches='tight')
     plt.clf()
 
-def get_ymin_ymax(sheet_name, attack):
+def get_params(sheet_name, attack):
     ymin=0.5
     ymax=1
-    return ymin, ymax
+    return {'ymin': ymin, 'ymax': ymax, 'legend': False}
 
 for sheet_name in sheet_names:
     for attack, attack_index in attack_indices.items():
-        plot(sheet_name, attack, data_arrays[(sheet_name, attack)],
-             ymin=get_ymin_ymax(sheet_name, attack)[0],
-             ymax=get_ymin_ymax(sheet_name, attack)[1])
+        plot(sheet_name, attack,
+             data_arrays[(sheet_name, attack)],
+             get_params(sheet_name, attack))
