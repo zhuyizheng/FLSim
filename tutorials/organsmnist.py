@@ -15,6 +15,7 @@ parser = argparse.ArgumentParser(description="OrganAMNIST with CNN")
 
 # Define arguments
 parser.add_argument("--lr", type=float, help="global learning rate")
+parser.add_argument("--local-lr", type=float, help="local learning rate", default=0.01)
 
 parser.add_argument("--num-cl", type=int, help="number of clients", default=100)
 parser.add_argument("--max-mal", type=int, help="maximum number of malicious clients", default=10)
@@ -197,7 +198,7 @@ json_config = {
             "optimizer": {
                 "_base_": "base_optimizer_sgd",
                 # client's local learning rate
-                "lr": 0.01,
+                "lr": args.local_lr,
                 # client's local momentum
                 "momentum": 0,
             },
