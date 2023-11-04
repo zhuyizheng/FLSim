@@ -458,7 +458,6 @@ class SyncTrainer(FLTrainer):
                 if client_id == 0:
                     check_param['pivot'] = client_delta.model
             self.server.receive_update_from_client(Message(client_delta, weight), check_type, check_param)
-            client_id += 1
 
     ### yizheng 20231025 attack and check
     def _train_one_round(
@@ -484,6 +483,11 @@ class SyncTrainer(FLTrainer):
             users_per_round: Number of participating users.
             metrics_reporter: Metric reporter to pass to other methods.
         """
+
+        ### yizheng 20231104 debug
+        # print("inside _train_one_round()")
+
+        # print("_train_one_round_apply_updates() start")
         server_return_metrics = self._train_one_round_apply_updates(
             timeline=timeline,
             clients=clients,
@@ -496,7 +500,9 @@ class SyncTrainer(FLTrainer):
             check_param=check_param,
             metrics_reporter=metrics_reporter,
         )
+        # print("_train_one_round_apply_updates() end")
 
+        # print("_train_one_round_report_metrics() start")
         self._train_one_round_report_metrics(
             timeline=timeline,
             clients=clients,
@@ -505,8 +511,11 @@ class SyncTrainer(FLTrainer):
             metrics_reporter=metrics_reporter,
             server_return_metrics=server_return_metrics,
         )
+        # print("_train_one_round_report_metrics() end")
 
+        # print("_post_train_one_round() start")
         self._post_train_one_round(timeline)
+        # print("_post_train_one_round() end")
 
 
     ### yizheng 20231025 attack and check
@@ -575,13 +584,30 @@ class SyncTrainer(FLTrainer):
         # Calculate and report metrics for this round
         t = time()
         # Train metrics of global model (e.g. loss and accuracy)
+
+        ### yizheng debug 20231104 report metrics
+
+        # print("report train metrics start")
+        # print("model:")
+        # for k, v in self.global_model().fl_get_module().state_dict().items():
+        #     if k.endswith('layer1.0.bn1.running_var') or k.endswith('layer1.0.bn1.num_batches_tracked'):
+        #         print(k, ":", v.flatten()[:5])
         self._report_train_metrics(
             model=self.global_model(),
             timeline=timeline,
             metrics_reporter=metrics_reporter,
             extra_metrics=server_return_metrics,
         )
+        # print("report train metrics end")
+
         # Evaluation metrics of global model on training data of `agg_metric_clients`
+        # print("report eval metrics start")
+        # print("clients to eval: ", list(agg_metric_clients))
+        # print("model:")
+        # for k, v in self.global_model().fl_get_module().state_dict().items():
+        #     if k.endswith('layer1.0.bn1.running_var') or k.endswith('layer1.0.bn1.num_batches_tracked'):
+        #         print(k, ":", v.flatten()[:5])
+
         self._evaluate_global_model_after_aggregation_on_train_clients(
             clients=agg_metric_clients,
             model=self.global_model(),
@@ -589,6 +615,8 @@ class SyncTrainer(FLTrainer):
             users_per_round=users_per_round,
             metrics_reporter=metrics_reporter,
         )
+        # print("report eval metrics end")
+
         # Communication metrics (e.g. amount of data sent between client and server)
         self._calc_post_epoch_communication_metrics(
             timeline,

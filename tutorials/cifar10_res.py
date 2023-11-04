@@ -14,7 +14,7 @@ import argparse
 parser = argparse.ArgumentParser(description="OrganAMNIST with ResNet")
 
 # Define arguments
-parser.add_argument("--lr", type=float, help="global learning rate", default=0.1)
+parser.add_argument("--lr", type=float, help="global learning rate", default=1)
 
 parser.add_argument("--num-cl", type=int, help="number of clients", default=1)
 parser.add_argument("--max-mal", type=int, help="maximum number of malicious clients", default=0)
@@ -31,7 +31,7 @@ parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm ch
 
 
 parser.add_argument("--local-batch-size", type=int, help="local batch size", default=32)
-parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
+parser.add_argument("--epochs", type=int, help="number of epochs", default=10)
 
 # Parse the command line arguments
 args = parser.parse_args()
@@ -112,9 +112,11 @@ transform = transforms.Compose(
 train_dataset = CIFAR10(
     root="./cifar10", train=True, download=True, transform=transform
 )
+train_dataset.data = train_dataset.data[:1000]
 test_dataset = CIFAR10(
     root="./cifar10", train=False, download=True, transform=transform
 )
+test_dataset.data = test_dataset.data[:1000]
 
 
 

@@ -30,10 +30,18 @@ class FLModelParamUtils:
         else:
             state_dict = model.state_dict()
         state_dict_copy = state_dict.copy()
-        for key in state_dict.keys():
-            if key.endswith('num_batches_tracked'):
-            # if key.endswith('num_batches_tracked') or key.endswith('running_mean') or key.endswith('running_var'):
-                state_dict_copy.pop(key)
+
+        # ### yizheng 20231104 debug
+        # for key, value in state_dict.items():
+        #     if key.endswith('layer1.0.bn1.num_batches_tracked'):
+        #     # if key.endswith('num_batches_tracked') or key.endswith('running_mean') or key.endswith('running_var'):
+        #         print("*** ", key, ':', value)
+        #     elif key.endswith('layer1.0.bn1.running_var'):
+        #         print("*** ", key, ':', value.flatten()[:5])
+        # for key in state_dict.keys():
+        #     if key.endswith('num_batches_tracked'):
+        #     # if key.endswith('num_batches_tracked') or key.endswith('running_mean') or key.endswith('running_var'):
+        #         state_dict_copy.pop(key)
 
         return state_dict_copy
 
@@ -182,9 +190,11 @@ class FLModelParamUtils:
         """sets model_to_save to have norm = 1"""
         global_params = cls.get_state_dict(model_to_save, only_federated_params)
 
-        with torch.no_grad():
-            for name, global_param in global_params.items():
-                global_param.data *= scale_factor
+        ### yizheng dubug don't scale model
+        ### TODO: remove comments
+        # with torch.no_grad():
+        #     for name, global_param in global_params.items():
+        #         global_param.data *= scale_factor
 
         cls.load_state_dict(model_to_save, global_params, only_federated_params)
 

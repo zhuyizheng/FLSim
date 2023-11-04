@@ -245,11 +245,23 @@ class SyncServer(ISyncServer):
 
     def step(self):
         aggregated_model = self._aggregator.aggregate()
+
+        ### yizheng 20231104 debug fix batch norm aggregate
+        batch_norm_diff_dict = {k: v.detach().clone() for k, v in aggregated_model.state_dict().items() if
+                           k.endswith('num_batches_tracked') or k.endswith('running_mean') or k.endswith('running_var')}
+
         FLModelParamUtils.set_gradient(
             model=self._global_model.fl_get_module(),
             reference_gradient=aggregated_model,
         )
         self._optimizer.step()
+
+        ### yizheng 20231104 debug fix batch norm aggregate
+        orig_dict = {k: v for k, v in self._global_model.fl_get_module().state_dict().items() if
+                     k.endswith('num_batches_tracked') or k.endswith('running_mean') or k.endswith('running_var')}
+
+        batch_norm_updated_dict = {k: v1 - v2  for (k, v1), (k, v2) in zip(orig_dict.items(), batch_norm_diff_dict.items())}
+        FLModelParamUtils.load_state_dict(self._global_model.fl_get_module(), batch_norm_updated_dict, False)
 
 
 class SyncSQServer(SyncServer):
