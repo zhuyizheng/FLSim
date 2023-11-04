@@ -38,6 +38,7 @@ parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
 args = parser.parse_args()
 
 print("global lr:", args.lr)
+print("local lr:", args.local_lr)
 print("number of clients:", args.num_cl)
 print("max number of malicious clients:", args.max_mal)
 print("attack type:", args.attack)
