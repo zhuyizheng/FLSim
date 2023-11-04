@@ -118,7 +118,7 @@ print(f"\nClients in total: {data_provider.num_train_users()}")
 # 1. Define our model, a simple CNN.
 # model = SimpleConvNet(in_channels=1, num_classes=11)
 model = resnet18()
-# model.fc = torch.nn.Linear(512, 11)
+model.fc = torch.nn.Linear(512, 11)
 
 def freeze_batch_norm(module):
     module.track_running_stats = False
