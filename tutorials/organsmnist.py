@@ -120,29 +120,33 @@ print(f"\nClients in total: {data_provider.num_train_users()}")
 model = resnet18()
 model.fc = torch.nn.Linear(512, 11)
 
-def freeze_batch_norm(module):
+def freeze_batch_norm_layer(module):
     module.track_running_stats = False
 
-freeze_batch_norm(model.bn1)
-freeze_batch_norm(model.layer1._modules['0'].bn1)
-freeze_batch_norm(model.layer1._modules['0'].bn2)
-freeze_batch_norm(model.layer1._modules['1'].bn1)
-freeze_batch_norm(model.layer1._modules['1'].bn2)
-freeze_batch_norm(model.layer2._modules['0'].bn1)
-freeze_batch_norm(model.layer2._modules['0'].bn2)
-freeze_batch_norm(model.layer2._modules['0'].downsample._modules['1'])
-freeze_batch_norm(model.layer2._modules['1'].bn1)
-freeze_batch_norm(model.layer2._modules['1'].bn2)
-freeze_batch_norm(model.layer3._modules['0'].bn1)
-freeze_batch_norm(model.layer3._modules['0'].bn2)
-freeze_batch_norm(model.layer3._modules['0'].downsample._modules['1'])
-freeze_batch_norm(model.layer3._modules['1'].bn1)
-freeze_batch_norm(model.layer3._modules['1'].bn2)
-freeze_batch_norm(model.layer4._modules['0'].bn1)
-freeze_batch_norm(model.layer4._modules['0'].bn2)
-freeze_batch_norm(model.layer4._modules['0'].downsample._modules['1'])
-freeze_batch_norm(model.layer4._modules['1'].bn1)
-freeze_batch_norm(model.layer4._modules['1'].bn2)
+def freeze_all_batch_norm_layers(model):
+    freeze_batch_norm_layer(model.bn1)
+    freeze_batch_norm_layer(model.layer1._modules['0'].bn1)
+    freeze_batch_norm_layer(model.layer1._modules['0'].bn2)
+    freeze_batch_norm_layer(model.layer1._modules['1'].bn1)
+    freeze_batch_norm_layer(model.layer1._modules['1'].bn2)
+    freeze_batch_norm_layer(model.layer2._modules['0'].bn1)
+    freeze_batch_norm_layer(model.layer2._modules['0'].bn2)
+    freeze_batch_norm_layer(model.layer2._modules['0'].downsample._modules['1'])
+    freeze_batch_norm_layer(model.layer2._modules['1'].bn1)
+    freeze_batch_norm_layer(model.layer2._modules['1'].bn2)
+    freeze_batch_norm_layer(model.layer3._modules['0'].bn1)
+    freeze_batch_norm_layer(model.layer3._modules['0'].bn2)
+    freeze_batch_norm_layer(model.layer3._modules['0'].downsample._modules['1'])
+    freeze_batch_norm_layer(model.layer3._modules['1'].bn1)
+    freeze_batch_norm_layer(model.layer3._modules['1'].bn2)
+    freeze_batch_norm_layer(model.layer4._modules['0'].bn1)
+    freeze_batch_norm_layer(model.layer4._modules['0'].bn2)
+    freeze_batch_norm_layer(model.layer4._modules['0'].downsample._modules['1'])
+    freeze_batch_norm_layer(model.layer4._modules['1'].bn1)
+    freeze_batch_norm_layer(model.layer4._modules['1'].bn2)
+
+from torch import nn
+nn.Module.freeze_all_batch_norm_layers = freeze_all_batch_norm_layers
 
 # 2. Choose where the model will be allocated.
 cuda_enabled = torch.cuda.is_available() and USE_CUDA

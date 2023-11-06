@@ -263,6 +263,8 @@ class SyncServer(ISyncServer):
         batch_norm_updated_dict = {k: v1 - v2  for (k, v1), (k, v2) in zip(orig_dict.items(), batch_norm_diff_dict.items())}
         FLModelParamUtils.load_state_dict(self._global_model.fl_get_module(), batch_norm_updated_dict, False)
 
+        ### yizheng 20231106 freeze batch norm
+        self._global_model.fl_get_module().freeze_all_batch_norm_layers()
 
 class SyncSQServer(SyncServer):
     def __init__(
