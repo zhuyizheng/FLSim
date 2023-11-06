@@ -32,12 +32,14 @@ for sheet_name in sheet_names:
     # Convert the DataFrame to a NumPy array
     data_array = df.to_numpy()
 
+    data_array /= 100
+
     # Append the NumPy array to the list
     for attack, attack_index in attack_indices.items():
         data_arrays[(sheet_name, attack)] = data_array[:, attack_index]
 
 
-def plot(sheet_name, attack, accuracies, ymin, ymax, legend):
+def plot(sheet_name, attack, accuracies, ymin, ymax, legend, length):
     SMALL_SIZE = 8
     MEDIUM_SIZE = 10
     BIGGER_SIZE = 24
@@ -50,11 +52,11 @@ def plot(sheet_name, attack, accuracies, ymin, ymax, legend):
     plt.rc('legend', fontsize=BIGGER_SIZE)  # legend fontsize
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
-    length = accuracies.shape[0]
+    # length = accuracies.shape[0]
 
-    plt.plot(range(1, length + 1), accuracies[:length, check_indices['no_check']], linewidth=3)
+    plt.plot(range(1, length + 1), accuracies[:length, check_indices['prob_zkp']], linewidth=3)
     plt.plot(range(1, length + 1), accuracies[:length, check_indices['strict']], linewidth=3, alpha=0.6, linestyle='dashed')
-    plt.plot(range(1, length + 1), accuracies[:length, check_indices['prob_zkp']], linewidth=3, linestyle='dotted')
+    plt.plot(range(1, length + 1), accuracies[:length, check_indices['no_check']], linewidth=3, linestyle='dotted')
     plt.xlabel('epochs')
     plt.ylabel('accuracy')
 
@@ -67,9 +69,18 @@ def plot(sheet_name, attack, accuracies, ymin, ymax, legend):
     plt.clf()
 
 def get_params(sheet_name, attack):
-    ymin=0.5
+    ymin=0.2
     ymax=1
-    return {'ymin': ymin, 'ymax': ymax, 'legend': False}
+    if sheet_name == 'resnet':
+        ymax = 0.8
+
+    legend = False
+    if sheet_name == 'cnn' and attack == 'scale_minus':
+        legend = True
+    length = 100
+    if sheet_name == 'cnn':
+        length = 50
+    return {'ymin': ymin, 'ymax': ymax, 'legend': legend, 'length': length}
 
 for sheet_name in sheet_names:
     for attack, attack_index in attack_indices.items():
