@@ -14,7 +14,7 @@ import argparse
 parser = argparse.ArgumentParser(description="OrganAMNIST with CNN")
 
 # Define arguments
-parser.add_argument("--lr", type=float, help="global learning rate")
+parser.add_argument("--lr", type=float, help="global learning rate", default=1.0)
 parser.add_argument("--local-lr", type=float, help="local learning rate", default=0.01)
 
 parser.add_argument("--num-cl", type=int, help="number of clients", default=100)
