@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 class MLP_Model(nn.Module):
 
-    def __init__(self, n_layers, input_dim, hidden_dim, output_dim, task):
+    def __init__(self, n_layers, input_dim, hidden_dim, output_dim):
         super().__init__()
 
         self.layers = nn.ModuleList()
@@ -61,12 +61,12 @@ parser.add_argument("--noise-std", type=float, help="noise std if attack type is
 parser.add_argument("--label-1", type=int, help="the label to change from if attack type is 'flip'", default=0)
 parser.add_argument("--label-2", type=int, help="the label to change to if attack type is 'flip'", default=1)
 
-parser.add_argument("--check", type=str, help="check type: 'no_check', 'strict', 'prob_zkp'", default="no_check")
+parser.add_argument("--check", type=str, help="check type: 'no_check', 'strict', 'prob_zkp'", default="strict")
 parser.add_argument("--pred", type=str, help="check predicate: 'l2norm', 'sphere', 'cosine'", default="l2norm")
 parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm check or cosine check", default=0.2)
 
 
-parser.add_argument("--local-batch-size", type=int, help="local batch size", default=32)
+parser.add_argument("--local-batch-size", type=int, help="local batch size", default=128)
 parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
 
 # Parse the command line arguments
@@ -110,26 +110,94 @@ MAX_MALICIOUS_CLIENTS = args.max_mal
 # suppress large outputs
 VERBOSE = False
 
-train_dataset_orig = OrganSMNIST(split="train", download=True)
-test_dataset_orig = OrganSMNIST(split="test", download=True)
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 
-train_images = torch.from_numpy(train_dataset_orig.imgs).float().view(-1, 1, 28, 28).repeat(1, 3, 1, 1)
-train_labels = torch.from_numpy(train_dataset_orig.labels)
-test_images = torch.from_numpy(test_dataset_orig.imgs).float().view(-1, 1, 28, 28).repeat(1, 3, 1, 1)
-test_labels = torch.from_numpy(test_dataset_orig.labels)
+adult_train_file = 'adult/adult.data'
+adult_test_file = 'adult/adult.test'
+features = ['age', 'workclass', 'fnlwgt', 'education', 'education_num', 'marital-status', 'occupation',
+            'relationship', 'race', 'sex', 'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
+label = "income"
+columns = features + [label]
 
-class organDataset(Dataset):
-    def __init__(self, images, labels):
-        self.images = images
+df_train = pd.read_csv(adult_train_file, names=columns)
+df_test = pd.read_csv(adult_test_file, names=columns).iloc[1:]
+df_test['income'] = df_test['income'].str.rstrip('.')
+
+def process_dataframe(df):
+    # Fill NaN with something better?
+    df.fillna(0, inplace=True)
+    # columns_to_discr = [('age', 10), ('fnlwgt', 25), ('capital-gain', 10), ('capital-loss', 10),
+    #                     ('hours-per-week', 10)]
+
+    # def discretize_colum(data_clm, num_values=10):
+    #     """ Discretize a column by quantiles """
+    #     r = np.argsort(data_clm)
+    #     bin_sz = (len(r) / num_values) + 1  # make sure all quantiles are in range 0-(num_quarts-1)
+    #     q = r // bin_sz
+    #     return q
+    #
+    # for clm, nvals in columns_to_discr:
+    #     df[clm] = discretize_colum(df[clm], num_values=nvals)
+    #     df[clm] = df[clm].astype(int).astype(str)
+
+    # df['education_num'] = df['education_num'].astype(int).astype(str)
+    # args.cat_idx = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+    X = df[features].to_numpy()
+    y = df[label].to_numpy()
+
+    return X, y
+
+X_train, y_train = process_dataframe(df_train)
+X_test, y_test = process_dataframe(df_test)
+
+le = LabelEncoder()
+y_train = le.fit_transform(y_train)
+y_test = le.transform(y_test)
+
+num_features = 14
+cat_idx = [1,3,5,6,7,8,9,13]
+
+num_idx = []
+
+for i in range(num_features):
+    if i in cat_idx:
+        le = LabelEncoder()
+        X_train[:, i] = le.fit_transform(X_train[:, i])
+        X_test[:, i] = le.transform(X_test[:, i])
+
+        # Setting this?
+        # args.cat_dims.append(len(le.classes_))
+
+    else:
+        num_idx.append(i)
+
+scaler = StandardScaler()
+X_train[:, num_idx] = scaler.fit_transform(X_train[:, num_idx])
+X_test[:, num_idx] = scaler.transform(X_test[:, num_idx])
+
+X_train = X_train.astype('float')
+X_test = X_test.astype('float')
+print(X_train)
+
+train_features = torch.from_numpy(X_train)
+train_labels = torch.from_numpy(y_train)
+test_features = torch.from_numpy(X_test)
+test_labels = torch.from_numpy(y_test)
+
+class AdultDataset(Dataset):
+    def __init__(self, features, labels):
+        self.features = features
         self.labels = labels
-        assert self.images.size(0) == self.labels.size(0)
+        assert self.features.size(0) == self.labels.size(0)
     def __len__(self):
-        return self.images.size(0)
+        return self.features.size(0)
     def __getitem__(self, user_id):
-        return self.images[user_id], self.labels[user_id]
+        return self.features[user_id], self.labels[user_id]
 
-train_dataset = organDataset(train_images, train_labels)
-test_dataset = organDataset(test_images, test_labels)
+train_dataset = AdultDataset(train_features, train_labels)
+test_dataset = AdultDataset(test_features, test_labels)
 
 # 2. Create a sharder, which maps samples in the training data to clients.
 sharder = SequentialSharder(examples_per_shard=math.ceil(train_dataset.__len__() / NUM_CLIENTS))
@@ -152,8 +220,7 @@ print(f"\nClients in total: {data_provider.num_train_users()}")
 
 # 1. Define our model, a simple CNN.
 # model = SimpleConvNet(in_channels=1, num_classes=11)
-model = resnet18()
-model.fc = torch.nn.Linear(512, 11)
+model = MLP_Model(n_layers=4, input_dim=14, hidden_dim=47, output_dim=2)
 
 
 # 2. Choose where the model will be allocated.
