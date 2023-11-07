@@ -67,7 +67,7 @@ parser.add_argument("--pred", type=str, help="check predicate: 'l2norm', 'sphere
 parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm check or cosine check", default=0.2)
 
 
-parser.add_argument("--local-batch-size", type=int, help="local batch size", default=128)
+parser.add_argument("--local-batch-size", type=int, help="local batch size", default=32)
 parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
 
 # Parse the command line arguments
@@ -159,7 +159,8 @@ y_test = le.transform(y_test)
 
 num_features = 14
 cat_idx = [1,3,5,6,7,8,9,13]
-
+# cat_dims_from_cat_idx = [9, 16, 7, 15, 6, 5, 2, 42] # not needed. set automatically
+cat_dims = []
 num_idx = []
 
 for i in range(num_features):
@@ -169,7 +170,7 @@ for i in range(num_features):
         X_test[:, i] = le.transform(X_test[:, i])
 
         # Setting this?
-        # args.cat_dims.append(len(le.classes_))
+        cat_dims.append(len(le.classes_))
 
     else:
         num_idx.append(i)
@@ -177,6 +178,19 @@ for i in range(num_features):
 scaler = StandardScaler()
 X_train[:, num_idx] = scaler.fit_transform(X_train[:, num_idx])
 X_test[:, num_idx] = scaler.transform(X_test[:, num_idx])
+
+
+ohe = OneHotEncoder(sparse=False, handle_unknown='ignore')
+new_x1 = ohe.fit_transform(X_train[:, cat_idx])
+new_x2 = X_train[:, num_idx]
+X_train = np.concatenate([new_x1, new_x2], axis=1)
+# print("New Shape:", X_train.shape)
+
+new_x1_test = ohe.transform(X_test[:, cat_idx])
+new_x2_test = X_test[:, num_idx]
+X_test = np.concatenate([new_x1_test, new_x2_test], axis=1)
+# print("New Test Shape:", X_test.shape)
+
 
 # X_train = X_train.astype('float')
 # X_test = X_test.astype('float')
@@ -221,7 +235,7 @@ print(f"\nClients in total: {data_provider.num_train_users()}")
 
 # 1. Define our model, a simple CNN.
 # model = SimpleConvNet(in_channels=1, num_classes=11)
-model = MLP_Model(n_layers=4, input_dim=14, hidden_dim=47, output_dim=2)
+model = MLP_Model(n_layers=4, input_dim=X_train.shape[1], hidden_dim=47, output_dim=2)
 
 
 # 2. Choose where the model will be allocated.
