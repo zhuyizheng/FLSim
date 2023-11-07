@@ -30,6 +30,7 @@ class MLP_Model(nn.Module):
         self.output_layer = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
+        # print("input_layer type:", self.input_layer.)
         x = F.relu(self.input_layer(x))
 
         # Use ReLU as activation for all hidden layers
@@ -39,8 +40,8 @@ class MLP_Model(nn.Module):
         # No activation function on the output
         x = self.output_layer(x)
 
-        if self.task == "classification":
-            x = F.softmax(x, dim=1)
+        # if self.task == "classification":
+        x = F.softmax(x, dim=1)
 
         return x
 
@@ -181,10 +182,10 @@ X_test[:, num_idx] = scaler.transform(X_test[:, num_idx])
 # X_test = X_test.astype('float')
 # print(X_train)
 
-train_features = torch.from_numpy(X_train.astype('float'))
-train_labels = torch.from_numpy(y_train.astype('float'))
-test_features = torch.from_numpy(X_test.astype('float'))
-test_labels = torch.from_numpy(y_test.astype('float'))
+train_features = torch.from_numpy(X_train.astype('float32'))
+train_labels = torch.from_numpy(y_train.astype('float32'))
+test_features = torch.from_numpy(X_test.astype('float32'))
+test_labels = torch.from_numpy(y_test.astype('float32'))
 
 class AdultDataset(Dataset):
     def __init__(self, features, labels):
