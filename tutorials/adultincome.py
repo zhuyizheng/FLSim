@@ -177,14 +177,14 @@ scaler = StandardScaler()
 X_train[:, num_idx] = scaler.fit_transform(X_train[:, num_idx])
 X_test[:, num_idx] = scaler.transform(X_test[:, num_idx])
 
-X_train = X_train.astype('float')
-X_test = X_test.astype('float')
-print(X_train)
+# X_train = X_train.astype('float')
+# X_test = X_test.astype('float')
+# print(X_train)
 
-train_features = torch.from_numpy(X_train)
-train_labels = torch.from_numpy(y_train)
-test_features = torch.from_numpy(X_test)
-test_labels = torch.from_numpy(y_test)
+train_features = torch.from_numpy(X_train.astype('float'))
+train_labels = torch.from_numpy(y_train.astype('float'))
+test_features = torch.from_numpy(X_test.astype('float'))
+test_labels = torch.from_numpy(y_test.astype('float'))
 
 class AdultDataset(Dataset):
     def __init__(self, features, labels):
