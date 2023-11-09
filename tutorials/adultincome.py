@@ -40,6 +40,8 @@ class MLP_Model(nn.Module):
         # No activation function on the output
         x = self.output_layer(x)
 
+        print("forward:", x)
+
         # if self.task == "classification":
         x = F.softmax(x, dim=1)
 
