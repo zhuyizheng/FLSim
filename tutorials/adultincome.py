@@ -40,9 +40,10 @@ class MLP_Model(nn.Module):
         # No activation function on the output
         x = self.output_layer(x)
 
+        print("forward:", x)
+
         # if self.task == "classification":
-        # x = F.softmax(x, dim=1)
-        x = F.sigmoid(x)
+        x = F.softmax(x, dim=1)
 
         return x
 
@@ -236,7 +237,7 @@ print(f"\nClients in total: {data_provider.num_train_users()}")
 
 # 1. Define our model, a simple CNN.
 # model = SimpleConvNet(in_channels=1, num_classes=11)
-model = MLP_Model(n_layers=4, input_dim=X_train.shape[1], hidden_dim=47, output_dim=1)
+model = MLP_Model(n_layers=4, input_dim=X_train.shape[1], hidden_dim=47, output_dim=2)
 
 
 # 2. Choose where the model will be allocated.
