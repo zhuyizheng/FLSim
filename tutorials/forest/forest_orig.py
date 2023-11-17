@@ -172,7 +172,7 @@ y_test = train[target].values[test_indices]
 # In[10]:
 
 
-max_epochs = 100 if not os.getenv("CI", False) else 2
+max_epochs = 500 if not os.getenv("CI", False) else 2
 
 # In[ ]:
 
