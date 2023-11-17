@@ -144,7 +144,7 @@ clf = TabNetClassifier(
     cat_emb_dim=1,
     lambda_sparse=1e-4, momentum=0.3, clip_value=2.,
     optimizer_fn=torch.optim.Adam,
-    optimizer_params=dict(lr=2e-3),
+    optimizer_params=dict(lr=1e-2),
     scheduler_params={"gamma": 0.95,
                       "step_size": 20},
     scheduler_fn=torch.optim.lr_scheduler.StepLR, epsilon=1e-15
