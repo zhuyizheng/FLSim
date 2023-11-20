@@ -226,8 +226,239 @@ clf = TabNetClassifier(
     scheduler_fn=torch.optim.lr_scheduler.StepLR, epsilon=1e-15
 )
 
+from dataclasses import dataclass, field
+from typing import List, Any, Dict
+import torch
+from torch.nn.utils import clip_grad_norm_
+import numpy as np
+from scipy.sparse import csc_matrix
+from abc import abstractmethod
+from pytorch_tabnet import tab_network
+from pytorch_tabnet.utils import (
+    SparsePredictDataset,
+    PredictDataset,
+    create_explain_matrix,
+    validate_eval_set,
+    create_dataloaders,
+    define_device,
+    ComplexEncoder,
+    check_input,
+    check_warm_start,
+    create_group_matrix,
+    check_embedding_parameters
+)
+from pytorch_tabnet.callbacks import (
+    CallbackContainer,
+    History,
+    EarlyStopping,
+    LRSchedulerCallback,
+)
+from pytorch_tabnet.metrics import MetricContainer, check_metrics
+from sklearn.base import BaseEstimator
 
-clf._set_network()
+from torch.utils.data import DataLoader
+import io
+import json
+from pathlib import Path
+import shutil
+import zipfile
+import warnings
+import copy
+import scipy
+
+def construct_network(
+        self,
+        X_train,
+        y_train,
+        eval_set=None,
+        eval_name=None,
+        eval_metric=None,
+        loss_fn=None,
+        weights=0,
+        max_epochs=100,
+        patience=10,
+        batch_size=1024,
+        virtual_batch_size=128,
+        num_workers=0,
+        drop_last=True,
+        callbacks=None,
+        pin_memory=True,
+        from_unsupervised=None,
+        warm_start=False,
+        augmentations=None,
+        compute_importance=True
+):
+    """Train a neural network stored in self.network
+    Using train_dataloader for training data and
+    valid_dataloader for validation.
+
+    Parameters
+    ----------
+    X_train : np.ndarray
+        Train set
+    y_train : np.array
+        Train targets
+    eval_set : list of tuple
+        List of eval tuple set (X, y).
+        The last one is used for early stopping
+    eval_name : list of str
+        List of eval set names.
+    eval_metric : list of str
+        List of evaluation metrics.
+        The last metric is used for early stopping.
+    loss_fn : callable or None
+        a PyTorch loss function
+    weights : bool or dictionnary
+        0 for no balancing
+        1 for automated balancing
+        dict for custom weights per class
+    max_epochs : int
+        Maximum number of epochs during training
+    patience : int
+        Number of consecutive non improving epoch before early stopping
+    batch_size : int
+        Training batch size
+    virtual_batch_size : int
+        Batch size for Ghost Batch Normalization (virtual_batch_size < batch_size)
+    num_workers : int
+        Number of workers used in torch.utils.data.DataLoader
+    drop_last : bool
+        Whether to drop last batch during training
+    callbacks : list of callback function
+        List of custom callbacks
+    pin_memory: bool
+        Whether to set pin_memory to True or False during training
+    from_unsupervised: unsupervised trained model
+        Use a previously self supervised model as starting weights
+    warm_start: bool
+        If True, current model parameters are used to start training
+    compute_importance : bool
+        Whether to compute feature importance
+    """
+    # update model name
+
+    self.max_epochs = max_epochs
+    self.patience = patience
+    self.batch_size = batch_size
+    self.virtual_batch_size = virtual_batch_size
+    self.num_workers = num_workers
+    self.drop_last = drop_last
+    self.input_dim = X_train.shape[1]
+    self._stop_training = False
+    self.pin_memory = pin_memory and (self.device.type != "cpu")
+    self.augmentations = augmentations
+    self.compute_importance = compute_importance
+
+    if self.augmentations is not None:
+        # This ensure reproducibility
+        self.augmentations._set_seed()
+
+    eval_set = eval_set if eval_set else []
+
+    if loss_fn is None:
+        self.loss_fn = self._default_loss
+    else:
+        self.loss_fn = loss_fn
+
+    check_input(X_train)
+    check_warm_start(warm_start, from_unsupervised)
+
+    self.update_fit_params(
+        X_train,
+        y_train,
+        eval_set,
+        weights,
+    )
+
+    # Validate and reformat eval set depending on training data
+    eval_names, eval_set = validate_eval_set(eval_set, eval_name, X_train, y_train)
+
+    train_dataloader, valid_dataloaders = self._construct_loaders(
+        X_train, y_train, eval_set
+    )
+
+    if from_unsupervised is not None:
+        # Update parameters to match self pretraining
+        self.__update__(**from_unsupervised.get_params())
+
+    if not hasattr(self, "network") or not warm_start:
+        # model has never been fitted before of warm_start is False
+        self._set_network()
+
+
+# def post_construct_network(
+#         self,
+#         X_train,
+#         y_train,
+#         eval_set=None,
+#         eval_name=None,
+#         eval_metric=None,
+#         loss_fn=None,
+#         weights=0,
+#         max_epochs=100,
+#         patience=10,
+#         batch_size=1024,
+#         virtual_batch_size=128,
+#         num_workers=0,
+#         drop_last=True,
+#         callbacks=None,
+#         pin_memory=True,
+#         from_unsupervised=None,
+#         warm_start=False,
+#         augmentations=None,
+#         compute_importance=True
+# ):
+#     self._update_network_params()
+#     self._set_metrics(eval_metric, eval_names)
+#     self._set_optimizer()
+#     self._set_callbacks(callbacks)
+#
+#     if from_unsupervised is not None:
+#         self.load_weights_from_unsupervised(from_unsupervised)
+#         warnings.warn("Loading weights from unsupervised pretraining")
+#     # Call method on_train_begin for all callbacks
+#     self._callback_container.on_train_begin()
+#
+#     # Training loop over epochs
+#     for epoch_idx in range(self.max_epochs):
+#
+#         # Call method on_epoch_begin for all callbacks
+#         self._callback_container.on_epoch_begin(epoch_idx)
+#
+#         self._train_epoch(train_dataloader)
+#
+#         # Apply predict epoch to all eval sets
+#         for eval_name, valid_dataloader in zip(eval_names, valid_dataloaders):
+#             self._predict_epoch(eval_name, valid_dataloader)
+#
+#         # Call method on_epoch_end for all callbacks
+#         self._callback_container.on_epoch_end(
+#             epoch_idx, logs=self.history.epoch_metrics
+#         )
+#
+#         if self._stop_training:
+#             break
+#
+#     # Call method on_train_end for all callbacks
+#     self._callback_container.on_train_end()
+#     self.network.eval()
+#
+#     if self.compute_importance:
+#         # compute feature importance once the best model is defined
+#         self.feature_importances_ = self._compute_feature_importances(X_train)
+
+
+TabNetClassifier.construct_network = construct_network
+
+clf.construct_network(
+    X_train=X_train, y_train=y_train,
+    eval_set=[(X_train, y_train), (X_valid, y_valid)],
+    eval_name=['train', 'valid'],
+    max_epochs=max_epochs, patience=100,
+    batch_size=16384, virtual_batch_size=256,
+    augmentations=aug
+)
+
 model = clf.network
 
 # nn.Module is clf.network
@@ -257,11 +488,11 @@ from flsim.utils.example_utils import MetricsReporter
 metrics_reporter = MetricsReporter([Channel.TENSORBOARD, Channel.STDOUT])
 
 import inspect
-
-if VERBOSE:
-    print(inspect.getsource(MetricsReporter.compute_scores))
-    print(inspect.getsource(MetricsReporter.create_eval_metrics))
-    print(inspect.getsource(MetricsReporter.compare_metrics))
+#
+# if VERBOSE:
+#     print(inspect.getsource(MetricsReporter.compute_scores))
+#     print(inspect.getsource(MetricsReporter.create_eval_metrics))
+#     print(inspect.getsource(MetricsReporter.compare_metrics))
 
 import flsim.configs
 from flsim.utils.config_utils import fl_config_from_json
