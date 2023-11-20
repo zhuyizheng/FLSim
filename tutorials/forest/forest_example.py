@@ -142,6 +142,8 @@ cat_dims = [ categorical_dims[f] for i, f in enumerate(features) if f in categor
 
 # In[9]:
 
+# change labels from 1...7 to 0...6
+train[target] -= 1
 
 if os.getenv("CI", False):
 # Take only a subsample to run CI
@@ -226,240 +228,27 @@ clf = TabNetClassifier(
     scheduler_fn=torch.optim.lr_scheduler.StepLR, epsilon=1e-15
 )
 
-from dataclasses import dataclass, field
-from typing import List, Any, Dict
+
+import random
+from typing import Any, Dict, Generator, Iterable, Iterator, List, Optional, Tuple
+
 import torch
-from torch.nn.utils import clip_grad_norm_
-import numpy as np
-from scipy.sparse import csc_matrix
-from abc import abstractmethod
-from pytorch_tabnet import tab_network
-from pytorch_tabnet.utils import (
-    SparsePredictDataset,
-    PredictDataset,
-    create_explain_matrix,
-    validate_eval_set,
-    create_dataloaders,
-    define_device,
-    ComplexEncoder,
-    check_input,
-    check_warm_start,
-    create_group_matrix,
-    check_embedding_parameters
-)
-from pytorch_tabnet.callbacks import (
-    CallbackContainer,
-    History,
-    EarlyStopping,
-    LRSchedulerCallback,
-)
-from pytorch_tabnet.metrics import MetricContainer, check_metrics
-from sklearn.base import BaseEstimator
+import torch.nn.functional as F
+from flsim.data.data_provider import IFLDataProvider, IFLUserData
+from flsim.data.data_sharder import FLDataSharder, SequentialSharder
+from flsim.interfaces.data_loader import IFLDataLoader
+from flsim.interfaces.metrics_reporter import Channel
+from flsim.interfaces.model import IFLModel
+from flsim.metrics_reporter.tensorboard_metrics_reporter import FLMetricsReporter
+from flsim.utils.data.data_utils import batchify
+from flsim.utils.simple_batch_metrics import FLBatchMetrics
+from torch import nn
+from torch.utils.data import Dataset
+from torchvision import transforms
+from torchvision.datasets.cifar import CIFAR10
+from torchvision.datasets.vision import VisionDataset
+from tqdm import tqdm
 
-from torch.utils.data import DataLoader
-import io
-import json
-from pathlib import Path
-import shutil
-import zipfile
-import warnings
-import copy
-import scipy
-
-def construct_network(
-        self,
-        X_train,
-        y_train,
-        eval_set=None,
-        eval_name=None,
-        eval_metric=None,
-        loss_fn=None,
-        weights=0,
-        max_epochs=100,
-        patience=10,
-        batch_size=1024,
-        virtual_batch_size=128,
-        num_workers=0,
-        drop_last=True,
-        callbacks=None,
-        pin_memory=True,
-        from_unsupervised=None,
-        warm_start=False,
-        augmentations=None,
-        compute_importance=True
-):
-    """Train a neural network stored in self.network
-    Using train_dataloader for training data and
-    valid_dataloader for validation.
-
-    Parameters
-    ----------
-    X_train : np.ndarray
-        Train set
-    y_train : np.array
-        Train targets
-    eval_set : list of tuple
-        List of eval tuple set (X, y).
-        The last one is used for early stopping
-    eval_name : list of str
-        List of eval set names.
-    eval_metric : list of str
-        List of evaluation metrics.
-        The last metric is used for early stopping.
-    loss_fn : callable or None
-        a PyTorch loss function
-    weights : bool or dictionnary
-        0 for no balancing
-        1 for automated balancing
-        dict for custom weights per class
-    max_epochs : int
-        Maximum number of epochs during training
-    patience : int
-        Number of consecutive non improving epoch before early stopping
-    batch_size : int
-        Training batch size
-    virtual_batch_size : int
-        Batch size for Ghost Batch Normalization (virtual_batch_size < batch_size)
-    num_workers : int
-        Number of workers used in torch.utils.data.DataLoader
-    drop_last : bool
-        Whether to drop last batch during training
-    callbacks : list of callback function
-        List of custom callbacks
-    pin_memory: bool
-        Whether to set pin_memory to True or False during training
-    from_unsupervised: unsupervised trained model
-        Use a previously self supervised model as starting weights
-    warm_start: bool
-        If True, current model parameters are used to start training
-    compute_importance : bool
-        Whether to compute feature importance
-    """
-    # update model name
-
-    self.max_epochs = max_epochs
-    self.patience = patience
-    self.batch_size = batch_size
-    self.virtual_batch_size = virtual_batch_size
-    self.num_workers = num_workers
-    self.drop_last = drop_last
-    self.input_dim = X_train.shape[1]
-    self._stop_training = False
-    self.pin_memory = pin_memory and (self.device.type != "cpu")
-    self.augmentations = augmentations
-    self.compute_importance = compute_importance
-
-    if self.augmentations is not None:
-        # This ensure reproducibility
-        self.augmentations._set_seed()
-
-    eval_set = eval_set if eval_set else []
-
-    if loss_fn is None:
-        self.loss_fn = self._default_loss
-    else:
-        self.loss_fn = loss_fn
-
-    check_input(X_train)
-    check_warm_start(warm_start, from_unsupervised)
-
-    self.update_fit_params(
-        X_train,
-        y_train,
-        eval_set,
-        weights,
-    )
-
-    # Validate and reformat eval set depending on training data
-    eval_names, eval_set = validate_eval_set(eval_set, eval_name, X_train, y_train)
-
-    train_dataloader, valid_dataloaders = self._construct_loaders(
-        X_train, y_train, eval_set
-    )
-
-    if from_unsupervised is not None:
-        # Update parameters to match self pretraining
-        self.__update__(**from_unsupervised.get_params())
-
-    if not hasattr(self, "network") or not warm_start:
-        # model has never been fitted before of warm_start is False
-        self._set_network()
-
-
-# def post_construct_network(
-#         self,
-#         X_train,
-#         y_train,
-#         eval_set=None,
-#         eval_name=None,
-#         eval_metric=None,
-#         loss_fn=None,
-#         weights=0,
-#         max_epochs=100,
-#         patience=10,
-#         batch_size=1024,
-#         virtual_batch_size=128,
-#         num_workers=0,
-#         drop_last=True,
-#         callbacks=None,
-#         pin_memory=True,
-#         from_unsupervised=None,
-#         warm_start=False,
-#         augmentations=None,
-#         compute_importance=True
-# ):
-#     self._update_network_params()
-#     self._set_metrics(eval_metric, eval_names)
-#     self._set_optimizer()
-#     self._set_callbacks(callbacks)
-#
-#     if from_unsupervised is not None:
-#         self.load_weights_from_unsupervised(from_unsupervised)
-#         warnings.warn("Loading weights from unsupervised pretraining")
-#     # Call method on_train_begin for all callbacks
-#     self._callback_container.on_train_begin()
-#
-#     # Training loop over epochs
-#     for epoch_idx in range(self.max_epochs):
-#
-#         # Call method on_epoch_begin for all callbacks
-#         self._callback_container.on_epoch_begin(epoch_idx)
-#
-#         self._train_epoch(train_dataloader)
-#
-#         # Apply predict epoch to all eval sets
-#         for eval_name, valid_dataloader in zip(eval_names, valid_dataloaders):
-#             self._predict_epoch(eval_name, valid_dataloader)
-#
-#         # Call method on_epoch_end for all callbacks
-#         self._callback_container.on_epoch_end(
-#             epoch_idx, logs=self.history.epoch_metrics
-#         )
-#
-#         if self._stop_training:
-#             break
-#
-#     # Call method on_train_end for all callbacks
-#     self._callback_container.on_train_end()
-#     self.network.eval()
-#
-#     if self.compute_importance:
-#         # compute feature importance once the best model is defined
-#         self.feature_importances_ = self._compute_feature_importances(X_train)
-
-
-TabNetClassifier.construct_network = construct_network
-
-clf.construct_network(
-    X_train=X_train, y_train=y_train,
-    eval_set=[(X_train, y_train), (X_valid, y_valid)],
-    eval_name=['train', 'valid'],
-    max_epochs=max_epochs, patience=100,
-    batch_size=16384, virtual_batch_size=256,
-    augmentations=aug
-)
-
-model = clf.network
 
 # nn.Module is clf.network
 # model = clf.network
@@ -469,13 +258,314 @@ model = clf.network
 cuda_enabled = torch.cuda.is_available()
 device = torch.device(f"cuda:{0}" if cuda_enabled else "cpu")
 
-model, device
+# model, device
 
 from flsim.utils.example_utils import FLModel
 
-# 3. Wrap the model with FLModel.
-global_model = FLModel(model, device)
-assert(global_model.fl_get_module() == model)
+class TabNetFLModel(FLModel):
+    def __init__(self, tabnet_model):
+        self.tabnet_model = tabnet_model
+
+    def construct_network(
+            self,
+            X_train,
+            y_train,
+            eval_set=None,
+            eval_name=None,
+            eval_metric=None,
+            loss_fn=None,
+            weights=0,
+            max_epochs=100,
+            patience=10,
+            batch_size=1024,
+            virtual_batch_size=128,
+            num_workers=0,
+            drop_last=True,
+            callbacks=None,
+            pin_memory=True,
+            from_unsupervised=None,
+            warm_start=False,
+            augmentations=None,
+            compute_importance=True,
+            device=torch.device(f"cuda:{0}" if cuda_enabled else "cpu")
+    ):
+        """Train a neural network stored in self.network
+        Using train_dataloader for training data and
+        valid_dataloader for validation.
+
+        Parameters
+        ----------
+        X_train : np.ndarray
+            Train set
+        y_train : np.array
+            Train targets
+        eval_set : list of tuple
+            List of eval tuple set (X, y).
+            The last one is used for early stopping
+        eval_name : list of str
+            List of eval set names.
+        eval_metric : list of str
+            List of evaluation metrics.
+            The last metric is used for early stopping.
+        loss_fn : callable or None
+            a PyTorch loss function
+        weights : bool or dictionnary
+            0 for no balancing
+            1 for automated balancing
+            dict for custom weights per class
+        max_epochs : int
+            Maximum number of epochs during training
+        patience : int
+            Number of consecutive non improving epoch before early stopping
+        batch_size : int
+            Training batch size
+        virtual_batch_size : int
+            Batch size for Ghost Batch Normalization (virtual_batch_size < batch_size)
+        num_workers : int
+            Number of workers used in torch.utils.data.DataLoader
+        drop_last : bool
+            Whether to drop last batch during training
+        callbacks : list of callback function
+            List of custom callbacks
+        pin_memory: bool
+            Whether to set pin_memory to True or False during training
+        from_unsupervised: unsupervised trained model
+            Use a previously self supervised model as starting weights
+        warm_start: bool
+            If True, current model parameters are used to start training
+        compute_importance : bool
+            Whether to compute feature importance
+        """
+
+        from dataclasses import dataclass, field
+        from typing import List, Any, Dict
+        import torch
+        from torch.nn.utils import clip_grad_norm_
+        import numpy as np
+        from scipy.sparse import csc_matrix
+        from abc import abstractmethod
+        from pytorch_tabnet import tab_network
+        from pytorch_tabnet.utils import (
+            SparsePredictDataset,
+            PredictDataset,
+            create_explain_matrix,
+            validate_eval_set,
+            create_dataloaders,
+            define_device,
+            ComplexEncoder,
+            check_input,
+            check_warm_start,
+            create_group_matrix,
+            check_embedding_parameters
+        )
+        from pytorch_tabnet.callbacks import (
+            CallbackContainer,
+            History,
+            EarlyStopping,
+            LRSchedulerCallback,
+        )
+        from pytorch_tabnet.metrics import MetricContainer, check_metrics
+        from sklearn.base import BaseEstimator
+
+        from torch.utils.data import DataLoader
+        import io
+        import json
+        from pathlib import Path
+        import shutil
+        import zipfile
+        import warnings
+        import copy
+        import scipy
+        
+        self.tabnet_model.max_epochs = max_epochs
+        self.tabnet_model.patience = patience
+        self.tabnet_model.batch_size = batch_size
+        self.tabnet_model.virtual_batch_size = virtual_batch_size
+        self.tabnet_model.num_workers = num_workers
+        self.tabnet_model.drop_last = drop_last
+        self.tabnet_model.input_dim = X_train.shape[1]
+        self.tabnet_model._stop_training = False
+        self.tabnet_model.pin_memory = pin_memory and (self.tabnet_model.device.type != "cpu")
+        self.tabnet_model.augmentations = augmentations
+        self.tabnet_model.compute_importance = compute_importance
+
+        if self.tabnet_model.augmentations is not None:
+            # This ensure reproducibility
+            self.tabnet_model.augmentations._set_seed()
+
+        eval_set = eval_set if eval_set else []
+
+        if loss_fn is None:
+            self.tabnet_model.loss_fn = self.tabnet_model._default_loss
+        else:
+            self.tabnet_model.loss_fn = loss_fn
+
+        check_input(X_train)
+        check_warm_start(warm_start, from_unsupervised)
+
+        self.tabnet_model.update_fit_params(
+            X_train,
+            y_train,
+            eval_set,
+            weights,
+        )
+
+        # Validate and reformat eval set depending on training data
+        eval_names, eval_set = validate_eval_set(eval_set, eval_name, X_train, y_train)
+
+        train_dataloader, valid_dataloaders = self.tabnet_model._construct_loaders(
+            X_train, y_train, eval_set
+        )
+
+        if from_unsupervised is not None:
+            # Update parameters to match self.tabnet_model pretraining
+            self.tabnet_model.__update__(**from_unsupervised.get_params())
+
+        if not hasattr(self.tabnet_model, "network") or not warm_start:
+            # model has never been fitted before of warm_start is False
+            self.tabnet_model._set_network()
+
+        self.tabnet_model._update_network_params()
+        self.tabnet_model._set_metrics(eval_metric, eval_names)
+        self.tabnet_model._set_optimizer()
+        self.tabnet_model._set_callbacks(callbacks)
+        if from_unsupervised is not None:
+            self.tabnet_model.load_weights_from_unsupervised(from_unsupervised)
+            warnings.warn("Loading weights from unsupervised pretraining")
+
+        # set FLModel's model to tabnet_model's network
+        self.model = self.tabnet_model.network
+        self.device = device
+
+
+    # def post_construct_network(
+    #         self,
+    #         X_train,
+    #         y_train,
+    #         eval_set=None,
+    #         eval_name=None,
+    #         eval_metric=None,
+    #         loss_fn=None,
+    #         weights=0,
+    #         max_epochs=100,
+    #         patience=10,
+    #         batch_size=1024,
+    #         virtual_batch_size=128,
+    #         num_workers=0,
+    #         drop_last=True,
+    #         callbacks=None,
+    #         pin_memory=True,
+    #         from_unsupervised=None,
+    #         warm_start=False,
+    #         augmentations=None,
+    #         compute_importance=True
+    # ):
+    #
+    #     # Call method on_train_begin for all callbacks
+    #     self._callback_container.on_train_begin()
+    #
+    #     # Training loop over epochs
+    #     for epoch_idx in range(self.max_epochs):
+    #
+    #         # Call method on_epoch_begin for all callbacks
+    #         self._callback_container.on_epoch_begin(epoch_idx)
+    #
+    #         self._train_epoch(train_dataloader)
+    #
+    #         # Apply predict epoch to all eval sets
+    #         for eval_name, valid_dataloader in zip(eval_names, valid_dataloaders):
+    #             self._predict_epoch(eval_name, valid_dataloader)
+    #
+    #         # Call method on_epoch_end for all callbacks
+    #         self._callback_container.on_epoch_end(
+    #             epoch_idx, logs=self.history.epoch_metrics
+    #         )
+    #
+    #         if self._stop_training:
+    #             break
+    #
+    #     # Call method on_train_end for all callbacks
+    #     self._callback_container.on_train_end()
+    #     self.network.eval()
+    #
+    #     if self.compute_importance:
+    #         # compute feature importance once the best model is defined
+    #         self.feature_importances_ = self._compute_feature_importances(X_train)
+
+
+    def fl_forward(self, batch) -> FLBatchMetrics:
+
+        features = batch["features"]  # [B, C, 28, 28]
+        batch_label = batch["labels"]
+
+        stacked_label = batch_label.view(-1).long().clone().detach()
+        if self.device is not None:
+            features = features.to(self.device)
+
+        X = features
+        y = batch_label
+        
+        X = X.to(self.tabnet_model.device).float()
+        y = y.to(self.tabnet_model.device).float()
+
+        if self.tabnet_model.augmentations is not None:
+            X, y = self.tabnet_model.augmentations(X, y)
+
+        for param in self.tabnet_model.network.parameters():
+            param.grad = None
+
+        output, M_loss = self.tabnet_model.network(X)
+
+        loss = self.tabnet_model.compute_loss(output, y)
+        # Add the overall sparsity loss
+        loss = loss - self.tabnet_model.lambda_sparse * M_loss
+
+        # Perform backward pass and optimization
+        # loss.backward()
+        # if self.tabnet_model.clip_value:
+        #     from torch.nn.utils import clip_grad_norm_
+        #     clip_grad_norm_(self.tabnet_model.network.parameters(), self.tabnet_model.clip_value)
+        # self.tabnet_model._optimizer.step()
+
+        # batch_logs["loss"] = loss.cpu().detach().numpy().item()
+        #
+        # return batch_logs
+
+
+        # output = self.model(features)
+
+        if self.device is not None:
+            output, batch_label, stacked_label = (
+                output.to(self.device),
+                batch_label.to(self.device),
+                stacked_label.to(self.device),
+            )
+
+        # loss = F.cross_entropy(output, stacked_label)
+        num_examples = self.get_num_examples(batch)
+        output = output.detach().cpu()
+        stacked_label = stacked_label.detach().cpu()
+        del features
+        return FLBatchMetrics(
+            loss=loss,
+            num_examples=num_examples,
+            predictions=output,
+            targets=stacked_label,
+            model_inputs=[],
+        )
+
+
+# 3. Wrap the model with TabNetFLModel.
+global_model = TabNetFLModel(clf)
+global_model.construct_network(X_train=X_train, y_train=y_train,
+    eval_set=[(X_train, y_train), (X_valid, y_valid)],
+    eval_name=['train', 'valid'],
+    max_epochs=max_epochs, patience=100,
+    batch_size=16384, virtual_batch_size=256,
+    augmentations=aug,
+    device=device)
+
+# assert(global_model.fl_get_module() == model)
 
 # 4. Move the model to GPU and enable CUDA if desired.
 if cuda_enabled:
@@ -567,7 +657,8 @@ final_model, eval_score = trainer.train(
     #               'label_2': args.label_2},
     # check_type=args.check,  # 'no_check', 'strict', 'prob_zkp'
     check_type='no_check',
-    check_param={},
+    check_param={'pred': 'l2norm',
+                 'norm_bound': 1e8},
     # check_param={'pred': args.pred, # 'l2norm', 'sphere', 'cosine'
     #              'norm_bound': args.norm_bound},
 )
