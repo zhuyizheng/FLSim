@@ -600,7 +600,7 @@ json_config = {
                 "_base_": "base_fed_avg_with_lr",
                 # "lr": args.lr,
                 "lr": 1.0,
-                "momentum": 0.9
+                "momentum": 0.
             },
             # type of user selection sampling
             "active_user_selector": {"_base_": "base_uniformly_random_active_user_selector"},
