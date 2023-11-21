@@ -200,8 +200,14 @@ class SyncServer(ISyncServer):
         if check_type == 'strict':
             if check_param['pred'] == 'l2norm':
                 # yizheng 20231031 debug cosine
-                print("cosine:", FLModelParamUtils.cosine(delta, check_param['pivot']))
-                return FLModelParamUtils.l2norm(delta) <= 1.01 * check_param['norm_bound']
+                # yizheng 20231121 batch norm layer with running mean and running var
+                if not FLModelParamUtils.has_batch_norm_layer(delta):
+                    print("cosine:", FLModelParamUtils.cosine(delta, check_param['pivot']))
+                    return FLModelParamUtils.l2norm(delta) <= 1.01 * check_param['norm_bound']
+                else:
+                    return FLModelParamUtils.l2norm_nn(delta) <= 1.01 * check_param['norm_bound']['nn'] \
+                            and FLModelParamUtils.l2norm_running_mean(delta) <= 1.01 * check_param['norm_bound']['running_mean'] \
+                            and FLModelParamUtils.l2norm_running_var(delta) <= 1.01 * check_param['norm_bound']['running_var']
             elif check_param['pred'] == 'cosine':
                 return FLModelParamUtils.l2norm(delta) <= 1.01 * check_param['norm_bound'] \
                     and FLModelParamUtils.cosine(delta, check_param['pivot']) >= max(0.0, check_param['cosine_bound'])
