@@ -2,6 +2,60 @@
 # coding: utf-8
 
 # In[1]:
+import argparse
+
+# Create a parser
+parser = argparse.ArgumentParser(description="OrganAMNIST with CNN")
+
+# Define arguments
+parser.add_argument("--lr", type=float, help="global learning rate", default=1.0)
+parser.add_argument("--local-lr", type=float, help="local learning rate", default=0.05)
+
+parser.add_argument("--num-cl", type=int, help="number of clients", default=100)
+parser.add_argument("--max-mal", type=int, help="maximum number of malicious clients", default=10)
+
+parser.add_argument("--attack", type=str, help="attack type: 'no_attack', 'scale', 'noise', 'flip'", default="no_attack")
+parser.add_argument("--scale-factor", type=float, help="scale factor if attack type is 'no_attack'", default=10)
+parser.add_argument("--noise-std", type=float, help="noise std if attack type is 'noise'", default=0.1)
+parser.add_argument("--label-1", type=int, help="the label to change from if attack type is 'flip'", default=1)
+parser.add_argument("--label-2", type=int, help="the label to change to if attack type is 'flip'", default=5)
+
+parser.add_argument("--check", type=str, help="check type: 'no_check', 'strict', 'prob_zkp'", default="no_check")
+parser.add_argument("--pred", type=str, help="check predicate: 'l2norm', 'sphere', 'cosine'", default="l2norm")
+parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm check or cosine check", default=100000000)
+
+
+parser.add_argument("--local-batch-size", type=int, help="local batch size", default=16384)
+parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
+
+# Parse the command line arguments
+args = parser.parse_args()
+
+print("global lr:", args.lr)
+print("local lr:", args.local_lr)
+print("number of clients:", args.num_cl)
+print("max number of malicious clients:", args.max_mal)
+print("attack type:", args.attack)
+if args.attack == 'no_attack':
+    pass
+elif args.attack == 'scale':
+    print("scale factor:", args.scale_factor)
+elif args.attack == 'noise':
+    print("noise std:", args.noise_std)
+elif args.attack == "flip":
+    print("label 1:", args.label_1)
+    print("label 2:", args.label_2)
+else:
+    raise ValueError("Incorrect attack type!")
+
+print("check type:", args.check)
+assert args.check in ['no_check', 'strict', 'prob_zkp']
+if args.check != 'no_check':
+    print("check pred:", args.pred)
+    print("check l2 norm bound:", args.norm_bound)
+
+print("local batch size:", args.local_batch_size)
+print("epochs:", args.epochs)
 
 
 from pytorch_tabnet.tab_model import TabNetClassifier
@@ -184,12 +238,12 @@ train_dataset = ForestDataset(torch.from_numpy(X_train).float(), torch.from_nump
 valid_dataset = ForestDataset(torch.from_numpy(X_valid).float(), torch.from_numpy(y_valid).view(-1, 1))
 test_dataset = ForestDataset(torch.from_numpy(X_test).float(), torch.from_numpy(y_test).view(-1, 1))
 
-NUM_CLIENTS = 1
+NUM_CLIENTS = args.num_cl
 # 2. Create a sharder, which maps samples in the training data to clients.
 sharder = SequentialSharder(examples_per_shard=math.ceil(train_dataset.__len__() / NUM_CLIENTS))
 # sharder = PowerLawSharder(num_shards=NUM_CLIENTS, alpha=0.5)
 
-LOCAL_BATCH_SIZE = 16384
+LOCAL_BATCH_SIZE = args.local_batch_size
 
 # 3. Shard and batchify training, eval, and test data.
 fl_data_loader = DataLoader(
@@ -202,7 +256,7 @@ fl_data_loader = DataLoader(
 )
 
 
-max_epochs = 100 if not os.getenv("CI", False) else 2
+max_epochs = args.epochs if not os.getenv("CI", False) else 2
 
 
 # In[ ]:
@@ -561,7 +615,7 @@ global_model.construct_network(X_train=X_train, y_train=y_train,
     eval_set=[(X_train, y_train), (X_valid, y_valid)],
     eval_name=['train', 'valid'],
     max_epochs=max_epochs, patience=100,
-    batch_size=16384, virtual_batch_size=256,
+    batch_size=args.local_batch_size, virtual_batch_size=256,
     augmentations=aug,
     device=device)
 
@@ -598,8 +652,7 @@ json_config = {
             "_base_": "base_sync_server",
             "server_optimizer": {
                 "_base_": "base_fed_avg_with_lr",
-                # "lr": args.lr,
-                "lr": 1.0,
+                "lr": args.lr,
                 "momentum": 0.
             },
             # type of user selection sampling
@@ -609,21 +662,18 @@ json_config = {
             # number of client's local epoch
             "epochs": 1,
             "optimizer": {
-                "_base_": "base_optimizer_sgd",
+                "_base_": "base_optimizer_sgd",  # 'base_optimizer_adam'
                 # client's local learning rate
-                # "lr": args.local_lr,
-                "lr": 0.02,
+                "lr": args.local_lr,
                 # client's local momentum
                 "momentum": 0,
             },
         },
         # number of users per round for aggregation
-        "users_per_round": 1,
-        # "users_per_round": NUM_CLIENTS,
+        "users_per_round": NUM_CLIENTS,
         # total number of global epochs
         # total #rounds = ceil(total_users / users_per_round) * epochs
-        # "epochs": args.epochs,
-        "epochs": 100,
+        "epochs": args.epochs,
         # frequency of reporting train metrics
         "train_metrics_reported_per_epoch": 100,
         # frequency of evaluation per epoch
@@ -646,21 +696,15 @@ final_model, eval_score = trainer.train(
     metrics_reporter=metrics_reporter,
     num_total_users=data_provider.num_train_users(),
     distributed_world_size=1,
-    # malicious_count=MAX_MALICIOUS_CLIENTS,
-    malicious_count=0,
-    # attack_type=args.attack,  # 'scale', 'noise', 'flip'
-    attack_type='noise',
-    attack_param={},
-    # attack_param={'scale_factor': args.scale_factor,
-    #               'noise_std': args.noise_std,
-    #               'label_1': args.label_1,
-    #               'label_2': args.label_2},
-    # check_type=args.check,  # 'no_check', 'strict', 'prob_zkp'
-    check_type='no_check',
-    check_param={'pred': 'l2norm',
-                 'norm_bound': 1e8},
-    # check_param={'pred': args.pred, # 'l2norm', 'sphere', 'cosine'
-    #              'norm_bound': args.norm_bound},
+    malicious_count=args.max_mal,
+    attack_type=args.attack,  # 'scale', 'noise', 'flip'
+    attack_param={'scale_factor': args.scale_factor,
+                  'noise_std': args.noise_std,
+                  'label_1': args.label_1,
+                  'label_2': args.label_2},
+    check_type=args.check,  # 'no_check', 'strict', 'prob_zkp'
+    check_param={'pred': args.pred, # 'l2norm', 'sphere', 'cosine'
+                 'norm_bound': args.norm_bound},
 )
 
 
