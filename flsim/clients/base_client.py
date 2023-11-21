@@ -170,6 +170,7 @@ class Client:
         if not self.has_batch_norm_layer(delta):
             print("delta norm before:", self.l2norm(delta).item())
         else:
+            print("delta norm before:", self.l2norm(delta).item())
             print("delta norm nn before:", self.l2norm_nn(delta).item())
             print("delta norm running mean before:", self.l2norm_running_mean(delta).item())
             print("delta norm running var before:", self.l2norm_running_var(delta).item())

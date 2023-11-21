@@ -216,7 +216,7 @@ class FLModelParamUtils:
         normsq = None
         with torch.no_grad():
             for name, global_param in global_params.items():
-                if not name.endswith('running_var'):
+                if name.endswith('running_var'):
                     if normsq is None:
                         normsq = torch.sum(torch.square(global_param.data))
                     else:
