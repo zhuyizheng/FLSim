@@ -130,6 +130,20 @@ class FLModelParamUtils:
         cls.load_state_dict(model_to_save, global_params, only_federated_params)
 
 
+    # yizheng 20231021 check if model has batch norm layer
+    @classmethod
+    def has_batch_norm_layer(
+            cls,
+            model_to_save: nn.Module,
+            only_federated_params: bool = False,
+    ):
+        global_params = cls.get_state_dict(model_to_save, only_federated_params)
+        for name, global_params in global_params.items():
+            if name.endswith('running_mean'):
+                return True
+        return False
+
+
     # yizheng 20231024 compute l2 norm of model
     @classmethod
     def l2norm(
@@ -147,6 +161,66 @@ class FLModelParamUtils:
                     normsq = torch.sum(torch.square(global_param.data))
                 else:
                     normsq += torch.sum(torch.square(global_param.data))
+        return torch.sqrt(normsq)
+
+    # yizheng 20231121 compute l2 norm of neural network parameters (without running mean or running var) of the model
+    @classmethod
+    def l2norm_nn(
+        cls,
+        model_to_save: nn.Module,
+        only_federated_params: bool = False,
+    ):
+        """computes l2 norm"""
+        global_params = cls.get_state_dict(model_to_save, only_federated_params)
+
+        normsq = None
+        with torch.no_grad():
+            for name, global_param in global_params.items():
+                if not (name.endswith('running_mean') or name.endswith('running_var')):
+                    if normsq is None:
+                        normsq = torch.sum(torch.square(global_param.data))
+                    else:
+                        normsq += torch.sum(torch.square(global_param.data))
+        return torch.sqrt(normsq)
+
+    # yizheng 20231121 compute l2 norm of running mean of the model
+    @classmethod
+    def l2norm_running_mean(
+        cls,
+        model_to_save: nn.Module,
+        only_federated_params: bool = False,
+    ):
+        """computes l2 norm"""
+        global_params = cls.get_state_dict(model_to_save, only_federated_params)
+
+        normsq = None
+        with torch.no_grad():
+            for name, global_param in global_params.items():
+                if name.endswith('running_mean'):
+                    if normsq is None:
+                        normsq = torch.sum(torch.square(global_param.data))
+                    else:
+                        normsq += torch.sum(torch.square(global_param.data))
+        return torch.sqrt(normsq)
+
+    # yizheng 20231121 compute l2 norm of running var of the model
+    @classmethod
+    def l2norm_running_var(
+        cls,
+        model_to_save: nn.Module,
+        only_federated_params: bool = False,
+    ):
+        """computes l2 norm"""
+        global_params = cls.get_state_dict(model_to_save, only_federated_params)
+
+        normsq = None
+        with torch.no_grad():
+            for name, global_param in global_params.items():
+                if not name.endswith('running_var'):
+                    if normsq is None:
+                        normsq = torch.sum(torch.square(global_param.data))
+                    else:
+                        normsq += torch.sum(torch.square(global_param.data))
         return torch.sqrt(normsq)
 
     # yizheng 20231031 inner product
@@ -180,6 +254,7 @@ class FLModelParamUtils:
         return cls.inner_prod(model_to_save_1, model_to_save_2) / (cls.l2norm(model_to_save_1) * cls.l2norm(model_to_save_2) + eps)
 
     # yizheng 20231024 scale model by scale_factor (could be negative)
+    # yizheng 20231121 batch norm layers with running mean and running var
     @classmethod
     def scale_model(
         cls,
@@ -190,11 +265,21 @@ class FLModelParamUtils:
         """sets model_to_save to have norm = 1"""
         global_params = cls.get_state_dict(model_to_save, only_federated_params)
 
-        ### yizheng dubug don't scale model
-        ### TODO: remove comments
-        with torch.no_grad():
-            for name, global_param in global_params.items():
-                global_param.data *= scale_factor
+        if not isinstance(scale_factor, dict):
+            with torch.no_grad():
+                for name, global_param in global_params.items():
+                    global_param.data *= scale_factor
+        else:
+            with torch.no_grad():
+                for name, global_param in global_params.items():
+                    if name.endswith('running_mean'):
+                        if 'running_mean' in scale_factor:
+                            global_param.data *= scale_factor['running_mean']
+                    elif name.endswith('running_var'):
+                        if 'running_var' in scale_factor:
+                            global_param.data *= scale_factor['running_var']
+                    else:
+                        global_param.data *= scale_factor['nn']
 
         cls.load_state_dict(model_to_save, global_params, only_federated_params)
 
@@ -221,9 +306,23 @@ class FLModelParamUtils:
         only_federated_params: bool = False,
     ) -> None:
         """sets model_to_save to have norm = 1"""
-        norm = cls.l2norm(model_to_save, only_federated_params)
-        eps = 1e-8
-        cls.scale_model(model_to_save, signed_scaled_norm / (norm + eps))
+
+        if not isinstance(signed_scaled_norm, dict):
+            norm = cls.l2norm(model_to_save, only_federated_params)
+            eps = 1e-8
+            cls.scale_model(model_to_save, signed_scaled_norm / (norm + eps))
+        else:
+            norm_nn = cls.l2norm_nn(model_to_save, only_federated_params)
+            norm_running_mean = cls.l2norm_running_mean(model_to_save, only_federated_params)
+            norm_running_var = cls.l2norm_running_var(model_to_save, only_federated_params)
+            eps = 1e-8
+            scale_factor = {}
+            scale_factor['nn'] = signed_scaled_norm['nn'] / (norm_nn + eps)
+            if 'running_mean' in scale_factor:
+                scale_factor['running_mean'] = signed_scaled_norm['running_mean'] / (norm_running_mean + eps)
+            if 'running_var' in scale_factor:
+                scale_factor['running_var'] = signed_scaled_norm['running_var'] / (norm_running_var + eps)
+            cls.scale_model(model_to_save, scale_factor)
 
 
     # yizheng 20231024 trim model
@@ -235,9 +334,22 @@ class FLModelParamUtils:
         only_federated_params: bool = False,
     ) -> None:
         """sets model_to_save to have norm = 1"""
-        norm = cls.l2norm(model_to_save, only_federated_params)
-        eps = 1e-8
-        cls.scale_model(model_to_save, norm_bound / torch.clamp(norm + eps, min=norm_bound))
+
+        if not isinstance(norm_bound, dict):
+            norm = cls.l2norm(model_to_save, only_federated_params)
+            eps = 1e-8
+            cls.scale_model(model_to_save, norm_bound / torch.clamp(norm + eps, min=norm_bound))
+        else:
+            norm_nn = cls.l2norm_nn(model_to_save, only_federated_params)
+            norm_running_mean = cls.l2norm_running_mean(model_to_save, only_federated_params)
+            norm_running_var = cls.l2norm_running_var(model_to_save, only_federated_params)
+            eps = 1e-8
+            scale_factor = {}
+            scale_factor['nn'] = norm_bound['nn'] / torch.clamp(norm_nn + eps, min=norm_bound['nn'])
+            scale_factor['running_mean'] = norm_bound['running_mean'] / torch.clamp(norm_running_mean + eps, min=norm_bound['running_mean'])
+            scale_factor['running_var'] = norm_bound['running_var'] / torch.clamp(norm_running_var + eps, min=norm_bound['running_var'])
+            cls.scale_model(model_to_save, scale_factor)
+
 
     # yizheng 20231025 add noise to model
     @classmethod

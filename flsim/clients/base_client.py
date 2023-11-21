@@ -167,7 +167,12 @@ class Client:
 
         ### yizheng 20231024 attacks
         # print("*** computing delta! ***")
-        print("delta norm before:", self.l2norm(delta).item())
+        if not self.has_batch_norm_layer(delta):
+            print("delta norm before:", self.l2norm(delta).item())
+        else:
+            print("delta norm nn before:", self.l2norm_nn(delta).item())
+            print("delta norm running mean before:", self.l2norm_running_mean(delta).item())
+            print("delta norm running var before:", self.l2norm_running_var(delta).item())
 
 
         if attack_type == 'no_attack':
@@ -182,8 +187,14 @@ class Client:
             # print("delta norm after:", self.l2norm(delta).item())
             # TODO: other check types
         elif attack_type == 'scale':
-            delta = self.rescale_delta(model_to_save=delta, signed_scaled_norm=check_param['norm_bound'] * attack_param['scale_factor'])
-            print("scale, delta norm after:", self.l2norm(delta).item())
+            signed_scaled_norm = {k: v * check_param['scale_factor'][k] for k, v in attack_param['norm_bound'].items()}
+            delta = self.rescale_delta(model_to_save=delta, signed_scaled_norm=signed_scaled_norm)
+            if not self.has_batch_norm_layer(delta):
+                print("delta norm after:", self.l2norm(delta).item())
+            else:
+                print("delta norm nn after:", self.l2norm_nn(delta).item())
+                print("delta norm running mean after:", self.l2norm_running_mean(delta).item())
+                print("delta norm running var after:", self.l2norm_running_var(delta).item())
         elif attack_type == 'noise':
             delta = self.add_noise_to_delta(model_to_save=delta, noise_std=attack_param['noise_std'])
             print("noise, delta norm after:", self.l2norm(delta).item())
@@ -253,10 +264,30 @@ class Client:
         return model_to_save
 
 
+    # yizheng 20231021 check if model has batch norm layer
+    def has_batch_norm_layer(self, model_to_save: IFLModel):
+        return FLModelParamUtils.has_batch_norm_layer(model_to_save.fl_get_module())
+
+
     # yizheng 20231024 compute l2 norm of model
     def l2norm(self, model_to_save: IFLModel):
         """Computes the L2 norm of the model"""
         return FLModelParamUtils.l2norm(model_to_save.fl_get_module())
+
+    # yizheng 20231021 compute l2 norm of neural network parameters (without running mean and running var) of the model
+    def l2norm_nn(self, model_to_save: IFLModel):
+        """Computes the L2 norm of the model"""
+        return FLModelParamUtils.l2norm_nn(model_to_save.fl_get_module())
+
+    # yizheng 20231021 compute l2 norm of running mean of the model
+    def l2norm_running_mean(self, model_to_save: IFLModel):
+        """Computes the L2 norm of the model"""
+        return FLModelParamUtils.l2norm_running_mean(model_to_save.fl_get_module())
+
+    # yizheng 20231021 compute l2 norm of running var of the model
+    def l2norm_running_var(self, model_to_save: IFLModel):
+        """Computes the L2 norm of the model"""
+        return FLModelParamUtils.l2norm_running_var(model_to_save.fl_get_module())
 
 
     #yizheng 20231031 compute cosine
@@ -276,6 +307,7 @@ class Client:
         return model_to_save
 
     # yizheng 20231024 trim model (norm_bound > 0)
+    # yizheng 20231121 running mean and running var layers
     def trim_delta(self, model_to_save: IFLModel, norm_bound) -> IFLModel:
         """Normalizes the delta to L2 norm 1"""
         FLModelParamUtils.trim_model(model_to_save.fl_get_module(), norm_bound)

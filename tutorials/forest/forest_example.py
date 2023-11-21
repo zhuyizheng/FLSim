@@ -22,7 +22,9 @@ parser.add_argument("--label-2", type=int, help="the label to change to if attac
 
 parser.add_argument("--check", type=str, help="check type: 'no_check', 'strict', 'prob_zkp'", default="no_check")
 parser.add_argument("--pred", type=str, help="check predicate: 'l2norm', 'sphere', 'cosine'", default="l2norm")
-parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm check or cosine check", default=100000000)
+parser.add_argument("--norm-bound-nn", type=float, help="nn l2 norm bound of l2norm check or cosine check", default=100000000)
+parser.add_argument("--norm-bound-running-mean", type=float, help="running mean l2 norm bound of l2norm check or cosine check", default=100000000)
+parser.add_argument("--norm-bound-running-var", type=float, help="running var l2 norm bound of l2norm check or cosine check", default=100000000)
 
 
 parser.add_argument("--local-batch-size", type=int, help="local batch size", default=16384)
@@ -52,7 +54,9 @@ print("check type:", args.check)
 assert args.check in ['no_check', 'strict', 'prob_zkp']
 if args.check != 'no_check':
     print("check pred:", args.pred)
-    print("check l2 norm bound:", args.norm_bound)
+    print("check nn l2 norm bound:", args.norm_bound_nn)
+    print("check running mean l2 norm bound:", args.norm_bound_running_mean)
+    print("check running var l2 norm bound:", args.norm_bound_running_var)
 
 print("local batch size:", args.local_batch_size)
 print("epochs:", args.epochs)
@@ -662,11 +666,11 @@ json_config = {
             # number of client's local epoch
             "epochs": 1,
             "optimizer": {
-                "_base_": "base_optimizer_sgd",  # 'base_optimizer_adam'
+                "_base_": "base_optimizer_adam",  # 'base_optimizer_sgd', 'base_optimizer_adam'
                 # client's local learning rate
                 "lr": args.local_lr,
                 # client's local momentum
-                "momentum": 0,
+                # "momentum": 0,
             },
         },
         # number of users per round for aggregation
@@ -698,13 +702,18 @@ final_model, eval_score = trainer.train(
     distributed_world_size=1,
     malicious_count=args.max_mal,
     attack_type=args.attack,  # 'scale', 'noise', 'flip'
-    attack_param={'scale_factor': args.scale_factor,
+    attack_param={'scale_factor': {'nn': args.scale_factor,
+                                   # 'running_mean': 1.0,
+                                   # 'running_var': 1.0
+                                   },
                   'noise_std': args.noise_std,
                   'label_1': args.label_1,
                   'label_2': args.label_2},
     check_type=args.check,  # 'no_check', 'strict', 'prob_zkp'
     check_param={'pred': args.pred, # 'l2norm', 'sphere', 'cosine'
-                 'norm_bound': args.norm_bound},
+                 'norm_bound': {'nn': args.norm_bound_nn,
+                                'running_mean': args.norm_bound_running_mean,
+                                'running_var': args.norm_bound_running_var}},
 )
 
 
