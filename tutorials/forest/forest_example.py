@@ -655,7 +655,8 @@ json_config = {
         "server": {
             "_base_": "base_sync_server",
             "server_optimizer": {
-                "_base_": "base_fed_avg_with_lr",
+                # "_base_": "base_fed_avg_with_lr",
+                "_base_": "base_fed_adam",
                 "lr": args.lr,
                 "momentum": 0.
             },
