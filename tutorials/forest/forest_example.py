@@ -655,8 +655,8 @@ json_config = {
         "server": {
             "_base_": "base_sync_server",
             "server_optimizer": {
-                # "_base_": "base_fed_avg_with_lr",
-                "_base_": "base_fed_adam",
+                "_base_": "base_fed_avg_with_lr",
+                # "_base_": "base_fed_adam",
                 "lr": args.lr,
                 # "momentum": 0.
             },
@@ -667,7 +667,7 @@ json_config = {
             # number of client's local epoch
             "epochs": 1,
             "optimizer": {
-                "_base_": "base_optimizer_sgd",  # 'base_optimizer_sgd', 'base_optimizer_adam'
+                "_base_": "base_optimizer_adam",  # 'base_optimizer_sgd', 'base_optimizer_adam'
                 # client's local learning rate
                 "lr": args.local_lr,
                 # client's local momentum
