@@ -185,6 +185,14 @@ class Client:
             # delta = self.trim_delta(model_to_save=delta, norm_bound=check_param['norm_bound'])
             delta = self.trim_delta(model_to_save=delta, norm_bound=norm_bound)
             # print("delta norm after:", self.l2norm(delta).item())
+
+            if not self.has_batch_norm_layer(delta):
+                print("delta norm after:", self.l2norm(delta).item())
+            else:
+                print("delta norm nn after:", self.l2norm_nn(delta).item())
+                print("delta norm running mean after:", self.l2norm_running_mean(delta).item())
+                print("delta norm running var after:", self.l2norm_running_var(delta).item())
+
             # TODO: other check types
         elif attack_type == 'scale':
             signed_scaled_norm = {k: v * check_param['scale_factor'][k] for k, v in attack_param['norm_bound'].items()}
