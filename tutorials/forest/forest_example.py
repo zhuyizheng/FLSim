@@ -612,7 +612,7 @@ json_config = {
                 "_base_": "base_optimizer_sgd",
                 # client's local learning rate
                 # "lr": args.local_lr,
-                "lr": 0.0002,
+                "lr": 0.02,
                 # client's local momentum
                 "momentum": 0,
             },
