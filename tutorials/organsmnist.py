@@ -28,7 +28,9 @@ parser.add_argument("--label-2", type=int, help="the label to change to if attac
 
 parser.add_argument("--check", type=str, help="check type: 'no_check', 'strict', 'prob_zkp'", default="no_check")
 parser.add_argument("--pred", type=str, help="check predicate: 'l2norm', 'sphere', 'cosine'", default="l2norm")
-parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm check or cosine check", default=0.2)
+parser.add_argument("--norm-bound-nn", type=float, help="nn l2 norm bound of l2norm check or cosine check", default=100000000)
+parser.add_argument("--norm-bound-running-mean", type=float, help="running mean l2 norm bound of l2norm check or cosine check", default=100000000)
+parser.add_argument("--norm-bound-running-var", type=float, help="running var l2 norm bound of l2norm check or cosine check", default=100000000)
 
 
 parser.add_argument("--local-batch-size", type=int, help="local batch size", default=32)
@@ -119,34 +121,34 @@ print(f"\nClients in total: {data_provider.num_train_users()}")
 # model = SimpleConvNet(in_channels=1, num_classes=11)
 model = resnet18()
 model.fc = torch.nn.Linear(512, 11)
-
-def freeze_batch_norm_layer(module):
-    module.track_running_stats = False
-
-def freeze_all_batch_norm_layers(model):
-    freeze_batch_norm_layer(model.bn1)
-    freeze_batch_norm_layer(model.layer1._modules['0'].bn1)
-    freeze_batch_norm_layer(model.layer1._modules['0'].bn2)
-    freeze_batch_norm_layer(model.layer1._modules['1'].bn1)
-    freeze_batch_norm_layer(model.layer1._modules['1'].bn2)
-    freeze_batch_norm_layer(model.layer2._modules['0'].bn1)
-    freeze_batch_norm_layer(model.layer2._modules['0'].bn2)
-    freeze_batch_norm_layer(model.layer2._modules['0'].downsample._modules['1'])
-    freeze_batch_norm_layer(model.layer2._modules['1'].bn1)
-    freeze_batch_norm_layer(model.layer2._modules['1'].bn2)
-    freeze_batch_norm_layer(model.layer3._modules['0'].bn1)
-    freeze_batch_norm_layer(model.layer3._modules['0'].bn2)
-    freeze_batch_norm_layer(model.layer3._modules['0'].downsample._modules['1'])
-    freeze_batch_norm_layer(model.layer3._modules['1'].bn1)
-    freeze_batch_norm_layer(model.layer3._modules['1'].bn2)
-    freeze_batch_norm_layer(model.layer4._modules['0'].bn1)
-    freeze_batch_norm_layer(model.layer4._modules['0'].bn2)
-    freeze_batch_norm_layer(model.layer4._modules['0'].downsample._modules['1'])
-    freeze_batch_norm_layer(model.layer4._modules['1'].bn1)
-    freeze_batch_norm_layer(model.layer4._modules['1'].bn2)
-
-from torch import nn
-nn.Module.freeze_all_batch_norm_layers = freeze_all_batch_norm_layers
+#
+# def freeze_batch_norm_layer(module):
+#     module.track_running_stats = False
+#
+# def freeze_all_batch_norm_layers(model):
+#     freeze_batch_norm_layer(model.bn1)
+#     freeze_batch_norm_layer(model.layer1._modules['0'].bn1)
+#     freeze_batch_norm_layer(model.layer1._modules['0'].bn2)
+#     freeze_batch_norm_layer(model.layer1._modules['1'].bn1)
+#     freeze_batch_norm_layer(model.layer1._modules['1'].bn2)
+#     freeze_batch_norm_layer(model.layer2._modules['0'].bn1)
+#     freeze_batch_norm_layer(model.layer2._modules['0'].bn2)
+#     freeze_batch_norm_layer(model.layer2._modules['0'].downsample._modules['1'])
+#     freeze_batch_norm_layer(model.layer2._modules['1'].bn1)
+#     freeze_batch_norm_layer(model.layer2._modules['1'].bn2)
+#     freeze_batch_norm_layer(model.layer3._modules['0'].bn1)
+#     freeze_batch_norm_layer(model.layer3._modules['0'].bn2)
+#     freeze_batch_norm_layer(model.layer3._modules['0'].downsample._modules['1'])
+#     freeze_batch_norm_layer(model.layer3._modules['1'].bn1)
+#     freeze_batch_norm_layer(model.layer3._modules['1'].bn2)
+#     freeze_batch_norm_layer(model.layer4._modules['0'].bn1)
+#     freeze_batch_norm_layer(model.layer4._modules['0'].bn2)
+#     freeze_batch_norm_layer(model.layer4._modules['0'].downsample._modules['1'])
+#     freeze_batch_norm_layer(model.layer4._modules['1'].bn1)
+#     freeze_batch_norm_layer(model.layer4._modules['1'].bn2)
+#
+# from torch import nn
+# nn.Module.freeze_all_batch_norm_layers = freeze_all_batch_norm_layers
 
 # 2. Choose where the model will be allocated.
 cuda_enabled = torch.cuda.is_available() and USE_CUDA
@@ -238,13 +240,18 @@ final_model, eval_score = trainer.train(
     distributed_world_size=1,
     malicious_count=MAX_MALICIOUS_CLIENTS,
     attack_type=args.attack,  # 'scale', 'noise', 'flip'
-    attack_param={'scale_factor': args.scale_factor,
+    attack_param={'scale_factor': {'nn': args.scale_factor,
+                                   # 'running_mean': 1.0,
+                                   # 'running_var': 1.0
+                                   },
                   'noise_std': args.noise_std,
                   'label_1': args.label_1,
                   'label_2': args.label_2},
     check_type=args.check,  # 'no_check', 'strict', 'prob_zkp'
     check_param={'pred': args.pred, # 'l2norm', 'sphere', 'cosine'
-                 'norm_bound': args.norm_bound},
+                 'norm_bound': {'nn': args.norm_bound_nn,
+                                'running_mean': args.norm_bound_running_mean,
+                                'running_var': args.norm_bound_running_var}},
 )
 
 # We can now test our trained model.
