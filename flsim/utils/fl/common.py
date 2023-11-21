@@ -38,10 +38,12 @@ class FLModelParamUtils:
         #         print("*** ", key, ':', value)
         #     elif key.endswith('layer1.0.bn1.running_var'):
         #         print("*** ", key, ':', value.flatten()[:5])
-        for key in state_dict.keys():
+        for key, value in state_dict.items():
             if key.endswith('num_batches_tracked'):
             # if key.endswith('num_batches_tracked') or key.endswith('running_mean') or key.endswith('running_var'):
                 state_dict_copy.pop(key)
+            else:
+                state_dict_copy[key] = value.detach().clone()
 
         return state_dict_copy
 
