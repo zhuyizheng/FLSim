@@ -154,10 +154,12 @@ n_total = len(train)
 # Rory Mitchell, Andrey Adinets, Thejaswi Rao, and Eibe Frank.
 # Xgboost: Scalable GPU accelerated learning. arXiv:1806.11248, 2018.
 
-train_val_indices, test_indices = train_test_split(
+train_indices, test_indices = train_test_split(
     range(n_total), test_size=0.2, random_state=0)
-train_indices, valid_indices = train_test_split(
-    train_val_indices, test_size=0.2 / 0.6, random_state=0)
+# train_val_indices, test_indices = train_test_split(
+#     range(n_total), test_size=0.2, random_state=0)
+# train_indices, valid_indices = train_test_split(
+#     train_val_indices, test_size=0.2 / 0.6, random_state=0)
 
 
 # # Simple preprocessing
@@ -213,8 +215,8 @@ else:
     X_train = train[features].values[train_indices]
     y_train = train[target].values[train_indices]
 
-X_valid = train[features].values[valid_indices]
-y_valid = train[target].values[valid_indices]
+# X_valid = train[features].values[valid_indices]
+# y_valid = train[target].values[valid_indices]
 
 X_test = train[features].values[test_indices]
 y_test = train[target].values[test_indices]
@@ -241,7 +243,7 @@ class ForestDataset(Dataset):
         return self.features[user_id], self.labels[user_id]
 
 train_dataset = ForestDataset(torch.from_numpy(X_train).float(), torch.from_numpy(y_train).view(-1, 1))
-valid_dataset = ForestDataset(torch.from_numpy(X_valid).float(), torch.from_numpy(y_valid).view(-1, 1))
+# valid_dataset = ForestDataset(torch.from_numpy(X_valid).float(), torch.from_numpy(y_valid).view(-1, 1))
 test_dataset = ForestDataset(torch.from_numpy(X_test).float(), torch.from_numpy(y_test).view(-1, 1))
 
 NUM_CLIENTS = args.num_cl
@@ -254,7 +256,7 @@ LOCAL_BATCH_SIZE = args.local_batch_size
 # 3. Shard and batchify training, eval, and test data.
 fl_data_loader = DataLoader(
     train_dataset=train_dataset,
-    eval_dataset=valid_dataset,
+    eval_dataset=test_dataset,
     test_dataset=test_dataset,
     sharder=sharder,
     batch_size=LOCAL_BATCH_SIZE,
@@ -618,7 +620,7 @@ class TabNetFLModel(FLModel):
 # 3. Wrap the model with TabNetFLModel.
 global_model = TabNetFLModel(clf)
 global_model.construct_network(X_train=X_train, y_train=y_train,
-    eval_set=[(X_train, y_train), (X_valid, y_valid)],
+    eval_set=[(X_train, y_train), (X_test, y_test)],
     eval_name=['train', 'valid'],
     max_epochs=max_epochs, patience=100,
     batch_size=args.local_batch_size, virtual_batch_size=256,
