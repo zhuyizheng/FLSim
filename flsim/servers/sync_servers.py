@@ -263,10 +263,11 @@ class SyncServer(ISyncServer):
         self._optimizer.step()
 
         ### yizheng 20231104 debug fix batch norm aggregate
-        orig_dict = {k: v for k, v in self._global_model.fl_get_module().state_dict().items() if
-                     k.endswith('num_batches_tracked') or k.endswith('running_mean') or k.endswith('running_var')}
+        # orig_dict = {k: v for k, v in self._global_model.fl_get_module().state_dict().items() if
+        #              k.endswith('num_batches_tracked') or k.endswith('running_mean') or k.endswith('running_var')}
 
-        batch_norm_updated_dict = {k: v1 - v2  for (k, v1), (k, v2) in zip(orig_dict.items(), batch_norm_diff_dict.items())}
+        batch_norm_updated_dict = {k: self._global_model.fl_get_module().state_dict()[k] - v
+                                   for k, v in batch_norm_diff_dict.items()}
         FLModelParamUtils.load_state_dict(self._global_model.fl_get_module(), batch_norm_updated_dict, False)
 
         ### yizheng 20231106 freeze batch norm
