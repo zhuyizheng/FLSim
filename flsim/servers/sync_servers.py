@@ -263,7 +263,7 @@ class SyncServer(ISyncServer):
         self._optimizer.step()
 
         ### yizheng 20231104 debug fix batch norm aggregate
-        orig_dict = {k: v.detach.clone() for k, v in self._global_model.fl_get_module().state_dict().items() if
+        orig_dict = {k: v.detach().clone() for k, v in self._global_model.fl_get_module().state_dict().items() if
                      k.endswith('num_batches_tracked') or k.endswith('running_mean') or k.endswith('running_var')}
 
         batch_norm_updated_dict = {k: self._global_model.fl_get_module().state_dict()[k] - v
