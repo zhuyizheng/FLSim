@@ -215,15 +215,22 @@ class SyncServer(ISyncServer):
                 raise ValueError("not implemented!")
         if check_type == 'prob_zkp':
             if check_param['pred'] == 'l2norm':
-                if FLModelParamUtils.l2norm(delta) <= 1.01 * check_param['norm_bound']:
-                    return True
-                ratio = FLModelParamUtils.l2norm(delta) / check_param['norm_bound']
-                ratio = ratio.item()
+                if not isinstance(check_param['norm_bound'], dict):
+                    if FLModelParamUtils.l2norm(delta) <= 1.01 * check_param['norm_bound']:
+                        return True
+                    ratio = FLModelParamUtils.l2norm(delta) / check_param['norm_bound']
+                    ratio = ratio.item()
+                else:
+                    if FLModelParamUtils.l2norm_nn(delta) <= 1.01 * check_param['norm_bound']['nn']:
+                        return True
+                    ratio = FLModelParamUtils.l2norm_nn(delta) / check_param['norm_bound']['nn']
+                    ratio = ratio.item()
 
                 from scipy.stats import chi2
                 import random
                 prob = chi2.cdf(1701.7372838684747 / (ratio * ratio), df=1000)
                 return random.random() < prob
+
             else:
                 raise ValueError("not implemented!")
         raise ValueError("Wrong check type!")
