@@ -621,7 +621,7 @@ class TabNetFLModel(FLModel):
 global_model = TabNetFLModel(clf)
 global_model.construct_network(X_train=X_train, y_train=y_train,
     eval_set=[(X_train, y_train), (X_test, y_test)],
-    eval_name=['train', 'valid'],
+    eval_name=['train', 'test'],
     max_epochs=max_epochs, patience=100,
     batch_size=args.local_batch_size, virtual_batch_size=256,
     augmentations=aug,
