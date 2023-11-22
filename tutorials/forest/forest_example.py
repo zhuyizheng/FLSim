@@ -28,6 +28,7 @@ parser.add_argument("--norm-bound-running-var", type=float, help="running var l2
 
 
 parser.add_argument("--local-batch-size", type=int, help="local batch size", default=16384)
+parser.add_argument("--local-epochs", type=int, help="number of local epochs", default=100)
 parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
 
 # Parse the command line arguments
@@ -59,6 +60,7 @@ if args.check != 'no_check':
     print("check running var l2 norm bound:", args.norm_bound_running_var)
 
 print("local batch size:", args.local_batch_size)
+print("local epochs:", args.local_epochs)
 print("epochs:", args.epochs)
 
 
@@ -665,7 +667,7 @@ json_config = {
         },
         "client": {
             # number of client's local epoch
-            "epochs": 1,
+            "epochs": args.local_epochs,
             "optimizer": {
                 "_base_": "base_optimizer_adam",  # 'base_optimizer_sgd', 'base_optimizer_adam'
                 # client's local learning rate
