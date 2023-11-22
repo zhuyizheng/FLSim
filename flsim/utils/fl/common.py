@@ -366,8 +366,9 @@ class FLModelParamUtils:
 
         with torch.no_grad():
             for name, global_param in global_params.items():
-                global_param.data += torch.normal(mean=torch.zeros_like(global_param.data),
-                                                  std=noise_std * torch.ones_like(global_param.data))
+                if not (name.endswith('running_mean') or name.endswith('running_var')):
+                    global_param.data += torch.normal(mean=torch.zeros_like(global_param.data),
+                                                    std=noise_std * torch.ones_like(global_param.data))
 
         cls.load_state_dict(model_to_save, global_params, only_federated_params)
 
