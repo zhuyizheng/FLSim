@@ -196,11 +196,11 @@ class Client:
 
             # TODO: other check types
         elif attack_type == 'scale':
-            signed_scaled_norm = {k: v * check_param['scale_factor'][k] for k, v in attack_param['norm_bound'].items()}
-            delta = self.rescale_delta(model_to_save=delta, signed_scaled_norm=signed_scaled_norm)
+            delta = self.scale_delta(model_to_save=delta, scale_factor=attack_param['scale_factor'])
             if not self.has_batch_norm_layer(delta):
                 print("delta norm after:", self.l2norm(delta).item())
             else:
+
                 print("delta norm nn after:", self.l2norm_nn(delta).item())
                 print("delta norm running mean after:", self.l2norm_running_mean(delta).item())
                 print("delta norm running var after:", self.l2norm_running_var(delta).item())
@@ -307,6 +307,13 @@ class Client:
     def normalize_delta(self, model_to_save: IFLModel) -> IFLModel:
         """Normalizes the delta to L2 norm 1"""
         FLModelParamUtils.normalize_model(model_to_save.fl_get_module())
+        return model_to_save
+
+
+    # yizheng 20231024 rescale model (signed_scaled_norm could be <0, meaning flip sign)
+    def scale_delta(self, model_to_save: IFLModel, scale_factor) -> IFLModel:
+        """Normalizes the delta to L2 norm 1"""
+        FLModelParamUtils.scale_model(model_to_save.fl_get_module(), scale_factor)
         return model_to_save
 
     # yizheng 20231024 rescale model (signed_scaled_norm could be <0, meaning flip sign)
