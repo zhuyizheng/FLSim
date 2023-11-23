@@ -31,6 +31,8 @@ parser.add_argument("--local-batch-size", type=int, help="local batch size", def
 parser.add_argument("--local-epochs", type=int, help="number of local epochs", default=10)
 parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
 
+parser.add_argument("--gpu", type=int, help="gpu number", default=0)
+
 # Parse the command line arguments
 args = parser.parse_args()
 
@@ -318,7 +320,7 @@ from tqdm import tqdm
 
 # 2. Choose where the model will be allocated.
 cuda_enabled = torch.cuda.is_available()
-device = torch.device(f"cuda:{0}" if cuda_enabled else "cpu")
+device = torch.device(f"cuda:{args.gpu}" if cuda_enabled else "cpu")
 
 # model, device
 
