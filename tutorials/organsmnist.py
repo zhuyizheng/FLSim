@@ -22,7 +22,7 @@ parser.add_argument("--max-mal", type=int, help="maximum number of malicious cli
 
 parser.add_argument("--attack", type=str, help="attack type: 'no_attack', 'scale', 'noise', 'flip'", default="no_attack")
 parser.add_argument("--scale-factor", type=float, help="scale factor if attack type is 'no_attack'", default=20)
-parser.add_argument("--noise-std", type=float, help="noise std if attack type is 'noise'", default=0.1)
+parser.add_argument("--noise-std", type=float, help="noise std if attack type is 'noise'", default=10)
 parser.add_argument("--label-1", type=int, help="the label to change from if attack type is 'flip'", default=5)
 parser.add_argument("--label-2", type=int, help="the label to change to if attack type is 'flip'", default=9)
 
