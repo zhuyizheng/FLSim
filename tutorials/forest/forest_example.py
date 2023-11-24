@@ -271,9 +271,13 @@ max_epochs = args.epochs if not os.getenv("CI", False) else 2
 
 # In[ ]:
 
+# 2. Choose where the model will be allocated.
+cuda_enabled = torch.cuda.is_available()
+device = torch.device(f"cuda:{args.gpu}" if cuda_enabled else "cpu")
+# model, device
 
 from pytorch_tabnet.augmentations import ClassificationSMOTE
-aug = ClassificationSMOTE(p=0.2)
+aug = ClassificationSMOTE(p=0.2, device_name=device)
 
 data_provider = DataProvider(fl_data_loader)
 print(f"\nClients in total: {data_provider.num_train_users()}")
@@ -318,10 +322,6 @@ from tqdm import tqdm
 # model = clf.network
 
 
-# 2. Choose where the model will be allocated.
-cuda_enabled = torch.cuda.is_available()
-device = torch.device(f"cuda:{args.gpu}" if cuda_enabled else "cpu")
-# model, device
 
 from flsim.utils.example_utils import FLModel
 
