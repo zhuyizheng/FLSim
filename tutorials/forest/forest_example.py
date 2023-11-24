@@ -8,7 +8,7 @@ import argparse
 parser = argparse.ArgumentParser(description="OrganAMNIST with CNN")
 
 # Define arguments
-parser.add_argument("--lr", type=float, help="global learning rate", default=1.0)
+parser.add_argument("--lr", type=float, help="global learning rate", default=2.0)
 parser.add_argument("--local-lr", type=float, help="local learning rate", default=0.02)
 
 parser.add_argument("--num-cl", type=int, help="number of clients", default=100)
@@ -22,14 +22,14 @@ parser.add_argument("--label-2", type=int, help="the label to change to if attac
 
 parser.add_argument("--check", type=str, help="check type: 'no_check', 'strict', 'prob_zkp'", default="no_check")
 parser.add_argument("--pred", type=str, help="check predicate: 'l2norm', 'sphere', 'cosine'", default="l2norm")
-parser.add_argument("--norm-bound-nn", type=float, help="nn l2 norm bound of l2norm check or cosine check", default=30.0)
+parser.add_argument("--norm-bound-nn", type=float, help="nn l2 norm bound of l2norm check or cosine check", default=25.0)
 parser.add_argument("--norm-bound-running-mean", type=float, help="running mean l2 norm bound of l2norm check or cosine check", default=100000000)
 parser.add_argument("--norm-bound-running-var", type=float, help="running var l2 norm bound of l2norm check or cosine check", default=100000000)
 
 
 parser.add_argument("--local-batch-size", type=int, help="local batch size", default=16384)
 parser.add_argument("--local-epochs", type=int, help="number of local epochs", default=10)
-parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
+parser.add_argument("--epochs", type=int, help="number of epochs", default=200)
 
 parser.add_argument("--gpu", type=int, help="gpu number", default=0)
 
