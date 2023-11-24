@@ -351,7 +351,7 @@ class TabNetFLModel(FLModel):
             warm_start=False,
             augmentations=None,
             compute_importance=True,
-            device=torch.device(f"cuda:{0}" if cuda_enabled else "cpu")
+            device=torch.device(f"cuda:{args.gpu}" if cuda_enabled else "cpu")
     ):
         """Train a neural network stored in self.network
         Using train_dataloader for training data and
