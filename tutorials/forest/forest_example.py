@@ -293,7 +293,8 @@ clf = TabNetClassifier(
     optimizer_params=dict(lr=2e-2),
     scheduler_params = {"gamma": 0.95,
                      "step_size": 20},
-    scheduler_fn=torch.optim.lr_scheduler.StepLR, epsilon=1e-15
+    scheduler_fn=torch.optim.lr_scheduler.StepLR, epsilon=1e-15,
+    device_name=f"cuda:{args.gpu}" if cuda_enabled else "cpu"
 )
 
 
