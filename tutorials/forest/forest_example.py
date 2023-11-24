@@ -321,7 +321,7 @@ from tqdm import tqdm
 # 2. Choose where the model will be allocated.
 cuda_enabled = torch.cuda.is_available()
 device = torch.device(f"cuda:{args.gpu}" if cuda_enabled else "cpu")
-
+print("device global:", device)
 # model, device
 
 from flsim.utils.example_utils import FLModel
@@ -400,7 +400,7 @@ class TabNetFLModel(FLModel):
         compute_importance : bool
             Whether to compute feature importance
         """
-
+        print("construct network device:", device)
         from dataclasses import dataclass, field
         from typing import List, Any, Dict
         import torch
