@@ -30,8 +30,8 @@ parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm ch
 
 
 parser.add_argument("--local-batch-size", type=int, help="local batch size", default=1024)
-parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
-parser.add_argument("--epochs", type=int, help="number of epochs", default=200)
+parser.add_argument("--local-epochs", type=int, help="number of epochs", default=10)
+parser.add_argument("--epochs", type=int, help="number of epochs", default=50)
 
 parser.add_argument("--gpu", type=int, help="gpu number", default=0)
 
