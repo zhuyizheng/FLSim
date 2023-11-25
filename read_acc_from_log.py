@@ -27,6 +27,7 @@ for name in file_list:
     with open(FILENAME, 'r') as file:
         file_contents = file.read()
     matches = re.findall(pattern, file_contents)
+    print(f'reading {name[:-4]}:')
     print(','.join(matches))
 
     # Open the output file for writing

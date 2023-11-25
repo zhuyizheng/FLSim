@@ -20,14 +20,14 @@ parser.add_argument("--num-cl", type=int, help="number of clients", default=100)
 parser.add_argument("--max-mal", type=int, help="maximum number of malicious clients", default=10)
 
 parser.add_argument("--attack", type=str, help="attack type: 'no_attack', 'scale', 'noise', 'flip'", default="no_attack")
-parser.add_argument("--scale-factor", type=float, help="scale factor if attack type is 'no_attack'", default=20)
+parser.add_argument("--scale-factor", type=float, help="scale factor if attack type is 'no_attack'", default=10)
 parser.add_argument("--noise-std", type=float, help="noise std if attack type is 'noise'", default=0.1)
 parser.add_argument("--label-1", type=int, help="the label to change from if attack type is 'flip'", default=5)
 parser.add_argument("--label-2", type=int, help="the label to change to if attack type is 'flip'", default=9)
 
 parser.add_argument("--check", type=str, help="check type: 'no_check', 'strict', 'prob_zkp'", default="no_check")
 parser.add_argument("--pred", type=str, help="check predicate: 'l2norm', 'sphere', 'cosine'", default="l2norm")
-parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm check or cosine check", default=0.2)
+parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm check or cosine check", default=200)
 
 
 parser.add_argument("--local-batch-size", type=int, help="local batch size", default=1024)
