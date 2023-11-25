@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser(description="OrganAMNIST with CNN")
 
 # Define arguments
 parser.add_argument("--lr", type=float, help="global learning rate", default=1.0)
+parser.add_argument("--local-lr", type=float, help="local learning rate", default=0.02)
 
 parser.add_argument("--num-cl", type=int, help="number of clients", default=100)
 parser.add_argument("--max-mal", type=int, help="maximum number of malicious clients", default=10)
@@ -39,6 +40,8 @@ parser.add_argument("--gpu", type=int, help="gpu number", default=0)
 args = parser.parse_args()
 
 print("global lr:", args.lr)
+print("local lr:", args.local_lr)
+
 print("number of clients:", args.num_cl)
 print("max number of malicious clients:", args.max_mal)
 print("attack type:", args.attack)
