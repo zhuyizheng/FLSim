@@ -80,6 +80,8 @@ def get_params(sheet_name, attack):
     length = 100
     if sheet_name == 'cnn':
         length = 50
+    elif sheet_name == 'mlp':
+        length = 200
     return {'ymin': ymin, 'ymax': ymax, 'legend': legend, 'length': length}
 
 for sheet_name in sheet_names:
