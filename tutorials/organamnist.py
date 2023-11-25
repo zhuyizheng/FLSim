@@ -177,7 +177,7 @@ json_config = {
             # number of client's local epoch
             "epochs": args.local_epochs,
             "optimizer": {
-                "_base_": "base_optimizer_adam",
+                "_base_": "base_optimizer_sgd",
                 # client's local learning rate
                 "lr": args.local_lr,
                 # client's local momentum
