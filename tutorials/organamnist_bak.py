@@ -13,7 +13,8 @@ import argparse
 parser = argparse.ArgumentParser(description="OrganAMNIST with CNN")
 
 # Define arguments
-parser.add_argument("--lr", type=float, help="global learning rate")
+parser.add_argument("--lr", type=float, help="global learning rate", default=1.0)
+parser.add_argument("--local-lr", type=float, help="local learning rate", default=0.02)
 
 parser.add_argument("--num-cl", type=int, help="number of clients", default=100)
 parser.add_argument("--max-mal", type=int, help="maximum number of malicious clients", default=10)
@@ -26,16 +27,21 @@ parser.add_argument("--label-2", type=int, help="the label to change to if attac
 
 parser.add_argument("--check", type=str, help="check type: 'no_check', 'strict', 'prob_zkp'", default="no_check")
 parser.add_argument("--pred", type=str, help="check predicate: 'l2norm', 'sphere', 'cosine'", default="l2norm")
-parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm check or cosine check", default=0.2)
+parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm check or cosine check", default=200)
 
 
-parser.add_argument("--local-batch-size", type=int, help="local batch size", default=32)
-parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
+parser.add_argument("--local-batch-size", type=int, help="local batch size", default=1024)
+parser.add_argument("--local-epochs", type=int, help="number of epochs", default=10)
+parser.add_argument("--epochs", type=int, help="number of epochs", default=50)
+
+parser.add_argument("--gpu", type=int, help="gpu number", default=0)
 
 # Parse the command line arguments
 args = parser.parse_args()
 
 print("global lr:", args.lr)
+print("local lr:", args.local_lr)
+
 print("number of clients:", args.num_cl)
 print("max number of malicious clients:", args.max_mal)
 print("attack type:", args.attack)
@@ -58,6 +64,7 @@ if args.check != 'no_check':
     print("check l2 norm bound:", args.norm_bound)
 
 print("local batch size:", args.local_batch_size)
+print("local epochs:", args.local_epochs)
 print("epochs:", args.epochs)
 
 
@@ -119,7 +126,7 @@ model = SimpleConvNet(in_channels=1, num_classes=11)
 
 # 2. Choose where the model will be allocated.
 cuda_enabled = torch.cuda.is_available() and USE_CUDA
-device = torch.device(f"cuda:{0}" if cuda_enabled else "cpu")
+device = torch.device(f"cuda:{args.gpu}" if cuda_enabled else "cpu")
 
 model, device
 
@@ -161,20 +168,20 @@ json_config = {
             "server_optimizer": {
                 "_base_": "base_fed_avg_with_lr",
                 "lr": args.lr,
-                "momentum": 0.9
+                "momentum": 0
             },
             # type of user selection sampling
             "active_user_selector": {"_base_": "base_uniformly_random_active_user_selector"},
         },
         "client": {
             # number of client's local epoch
-            "epochs": 1,
+            "epochs": args.local_epochs,
             "optimizer": {
                 "_base_": "base_optimizer_sgd",
                 # client's local learning rate
-                "lr": 0.01,
+                "lr": args.local_lr,
                 # client's local momentum
-                "momentum": 0,
+                # "momentum": 0,
             },
         },
         # number of users per round for aggregation
@@ -221,4 +228,5 @@ trainer.test(
     data_provider=data_provider,
     metrics_reporter=MetricsReporter([Channel.STDOUT]),
 )
+
 
