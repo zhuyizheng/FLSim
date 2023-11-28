@@ -13,13 +13,14 @@ import argparse
 parser = argparse.ArgumentParser(description="OrganAMNIST with CNN")
 
 # Define arguments
-parser.add_argument("--lr", type=float, help="global learning rate")
+parser.add_argument("--lr", type=float, help="global learning rate", default=5.0)
+parser.add_argument("--local-lr", type=float, help="local learning rate", default=0.01)
 
 parser.add_argument("--num-cl", type=int, help="number of clients", default=100)
 parser.add_argument("--max-mal", type=int, help="maximum number of malicious clients", default=10)
 
 parser.add_argument("--attack", type=str, help="attack type: 'no_attack', 'scale', 'noise', 'flip'", default="no_attack")
-parser.add_argument("--scale-factor", type=float, help="scale factor if attack type is 'no_attack'", default=10)
+parser.add_argument("--scale-factor", type=float, help="scale factor if attack type is 'no_attack'", default=10.0)
 parser.add_argument("--noise-std", type=float, help="noise std if attack type is 'noise'", default=0.1)
 parser.add_argument("--label-1", type=int, help="the label to change from if attack type is 'flip'", default=5)
 parser.add_argument("--label-2", type=int, help="the label to change to if attack type is 'flip'", default=9)
@@ -30,12 +31,15 @@ parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm ch
 
 
 parser.add_argument("--local-batch-size", type=int, help="local batch size", default=32)
+parser.add_argument("--local-epochs", type=int, help="number of epochs", default=1)
 parser.add_argument("--epochs", type=int, help="number of epochs", default=100)
 
 # Parse the command line arguments
 args = parser.parse_args()
 
 print("global lr:", args.lr)
+print("local lr:", args.local_lr)
+
 print("number of clients:", args.num_cl)
 print("max number of malicious clients:", args.max_mal)
 print("attack type:", args.attack)
@@ -58,6 +62,7 @@ if args.check != 'no_check':
     print("check l2 norm bound:", args.norm_bound)
 
 print("local batch size:", args.local_batch_size)
+print("local epochs:", args.local_epochs)
 print("epochs:", args.epochs)
 
 
@@ -168,11 +173,11 @@ json_config = {
         },
         "client": {
             # number of client's local epoch
-            "epochs": 1,
+            "epochs": args.local_epochs,
             "optimizer": {
                 "_base_": "base_optimizer_sgd",
                 # client's local learning rate
-                "lr": 0.01,
+                "lr": args.local_lr,
                 # client's local momentum
                 "momentum": 0,
             },
