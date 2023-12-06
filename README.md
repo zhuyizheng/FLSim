@@ -1,6 +1,7 @@
 # A Fork of FLSim that simulates attacks and defenses in Federated Learning
 
-This is a fork of [FLSIM](https://github.com/facebookresearch/FLSim). It implements various attacks and defenses in Federated Learning. Experiments can be run with 
+This is a fork of [FLSim](https://github.com/facebookresearch/FLSim). 
+The orgininal FLSim simulats Federated Learning on a single machine. This fork implements various attacks and defenses. Experiments can be run with 
 
 ```python attack_defense_experiments/run_exp.py [PARAMETERS]```
 
