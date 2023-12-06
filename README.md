@@ -1,70 +1,37 @@
-# Federated Learning Simulator (FLSim)
+# A Fork of FLSim that simulates attacks and defenses in Federated Learning
 
-<p align="center">
-  <img src="https://github.com/facebookresearch/FLSim/blob/main/assets/logo.png">
-</p>
+This is a fork of [FLSIM](https://github.com/facebookresearch/FLSim). It implements various attacks and defenses in Federated Learning. Experiments can be run with 
 
-<!-- [![CircleCI](https://circleci.com/gh/pytorch/flsim.svg?style=svg)](https://circleci.com/gh/pytorch/flsim) -->
+```python attack_defense_experiments/run_exp.py [PARAMETERS]```
 
-Federated Learning Simulator (FLSim) is a flexible, standalone library written in PyTorch that simulates FL settings with a minimal, easy-to-use API. FLSim is domain-agnostic and accommodates many use cases such as computer vision and natural text. Currently FLSim supports cross-device FL, where millions of clients' devices (e.g. phones) train a model collaboratively together.
-
-FLSim is scalable and fast. It supports differential privacy (DP), secure aggregation (secAgg), and a variety of compression techniques.
-
-In FL, a model is trained collaboratively by multiple clients that each have their own local data, and a central server moderates training, e.g. by aggregating model updates from multiple clients.
-
-In FLSim, developers only need to define a dataset, model, and metrics reporter. All other aspects of FL training are handled internally by the FLSim core library.
-
-## FLSim
-### Library Structure
-
-<p align="center">
-  <img src="https://github.com/facebookresearch/FLSim/blob/main/assets/FLSim_Overview.png">
-</p>
-
-FLSim core components follow the same semantic as FedAvg. The server comprises three main features: selector, aggregator, and optimizer at a high level. The selector selects clients for training, and the aggregator aggregates client updates until a round is complete. Then, the optimizer optimizes the server model based on the aggregated gradients. The server communicates with the clients via the channel. The channel then compresses the message between the server and the clients. Locally, the client consists of a dataset and a local optimizer. This local optimizer can be SGD, FedProx, or a custom Pytorch optimizer.
-
-## Installation
-The latest release of FLSim can be installed via `pip`:
-```bash
-pip install flsim
-```
-
-You can also install directly from the source for the latest features (along with its quirks and potentially occasional bugs):
-```bash
-git clone https://github.com/facebookresearch/FLSim.git
-cd FLSim
-pip install -e .
-```
-
-## Getting started
-
-To implement a central training loop in the FL setting using FLSim, a developer simply performs the following steps:
-
-1. Build their own data pipeline to assign individual rows of training data to client devices (to simulate data distributed across client devices)
-2. Create a corresponding `torch.nn.Module` model and wrap it in an FL model.
-3. Define a custom metrics reporter that computes and collects metrics of interest (e.g. accuracy) throughout training.
-4. Set the desired hyperparameters in a config.
-
-
-## Usage Example
-
-### Tutorials
-* [Image classification with CIFAR-10](https://github.com/facebookresearch/FLSim/blob/main/tutorials/cifar10_tutorial.ipynb)
-* [Sentiment classification with LEAF's Sent140](https://github.com/facebookresearch/FLSim/blob/main/tutorials/sent140_tutorial.ipynb)
-* [Compression for communication efficiency](https://github.com/facebookresearch/FLSim/blob/main/tutorials/channel_feature_tutorial.ipynb)
-* [Adding a custom communication channel](https://github.com/facebookresearch/FLSim/blob/main/tutorials/custom_channel_tutorial.ipynb)
-
-To see the details, please refer to the [tutorials](https://github.com/facebookresearch/FLSim/tree/main/tutorials) that we have prepared.
-
-### Examples
-We have prepared the runnable examples for 2 of the tutorials above:
-* [Image classification with CIFAR-10](https://github.com/facebookresearch/FLSim/blob/main/examples/cifar10_example.py)
-* [Sentiment classification with LEAF's Sent140](https://github.com/facebookresearch/FLSim/blob/main/examples/sent140_example.py)
-
-
-## Contributing
-See the [CONTRIBUTING](https://github.com/facebookresearch/FLSim/blob/main/CONTRIBUTING.md) for how to contribute to this library.
-
-
-## License
-This code is released under Apache 2.0, as found in the [LICENSE](https://github.com/facebookresearch/FLSim/blob/main/LICENSE) file.
+Description of parameters:
+- `--dataset`: The dataset to run expirement on. Choose from `organamnist`, `organsmnist`, `forest`. default: `organamnist`
+- `--lr`: The global learning rate
+- `--momentum`: The global momentum
+- `--local-lr`: The local learning rate on each client
+- `--num-cl`: Total number of clients to be simulated
+- `--max-mal`: The number of malicious clients to be simulated
+- `--attack`: The attack type. Choose from:
+  - `no-attack`: no attack
+  - `scale`: scale the model update by a constant, positive or negative
+  - `noise`:add Gaussian noise to every coordinate
+  - `flip`: change the label of one category to another
+- `--scale-factor`: If `--attack scale`, the factor to scale the model update, positive or negative
+- `--noise-std`: If `--attack noise`, the standard deviation of Gaussian noise to be added to each coordinate
+- `--label-1`: If `--attack flip`, the label to change from
+- `--label-2`: If `--attack flip`, the label to change to
+- `--check`: The type of check on model updates. Choose from:
+  - `no_check`: aggregate model updates from all the clients without checking
+  - `strict`: perform strict checking
+  - `prob_zkp`: perform probabilistic checking as in the paper https://arxiv.org/abs/2311.15310
+- `--pred`: The check predicate. Choose from:
+  - `l2norm`: check if L2 norm of model update is bounded by a specified value
+  - `sphere`: check if the distance of a model update to a pivot vector is bounded by a specified value
+  - `cosine`: check if the L2 norm of model update is bounded by a specified value and the cosine similarity of the model update and a pivot vector is bigger than a specified value
+- `--norm-bound`: This parameter applies if `--dataset organamnist`. The corresponding CNN model does not have batch norm layers. If `--pred l2norm` or `--pred cosine`, the L2 norm bound of the model update; if `--pred sphere`, the distance bound
+- `--norm-bound-nn`, `--norm-bound-running-mean`, `--norm-bound-running-var`: These parameters applies if `--dataset organsmnist` or `--dataset forest`. The corresponding Resnet18 model or TabNet model has batch norm layers. The model update of neural network parameters and `*_running_mean`, `*_running_var` tensors from batch norm layers must be treated separately. If `--pred l2norm` or `--pred cosine`, the L2 norm bound of the model update; if `--pred sphere`, the distance bound
+- `--local-optimizer`: The optimizers used on each client's local training
+- `--local-batch-size`: The batch size used on each client's local training
+- `--local-epochs`: The number of epochs used on each client's local training
+- `--epochs`: The number of global epochs
+- `--gpu`: The id of the GPU to train on (if GPU is available) 

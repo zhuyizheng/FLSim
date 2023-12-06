@@ -198,7 +198,7 @@ class SyncServer(ISyncServer):
         if check_type == 'no_check':
             return True
         if check_type == 'strict':
-            if check_param['pred'] == 'l2norm':
+            if check_param['pred'] in ['l2norm', 'sphere']:
                 # yizheng 20231031 debug cosine
                 # yizheng 20231121 batch norm layer with running mean and running var
                 if not FLModelParamUtils.has_batch_norm_layer(delta):
@@ -209,12 +209,17 @@ class SyncServer(ISyncServer):
                             and FLModelParamUtils.l2norm_running_mean(delta) <= 1.01 * check_param['norm_bound']['running_mean'] \
                             and FLModelParamUtils.l2norm_running_var(delta) <= 1.01 * check_param['norm_bound']['running_var']
             elif check_param['pred'] == 'cosine':
-                return FLModelParamUtils.l2norm(delta) <= 1.01 * check_param['norm_bound'] \
-                    and FLModelParamUtils.cosine(delta, check_param['pivot']) >= max(0.0, check_param['cosine_bound'])
+                if not FLModelParamUtils.has_batch_norm_layer(delta):
+                    return FLModelParamUtils.l2norm(delta) <= 1.01 * check_param['norm_bound'] \
+                        and FLModelParamUtils.cosine(delta, check_param['pivot']) >= max(0.0, check_param['cosine_bound'])
+                else:
+                    return FLModelParamUtils.l2norm_nn(delta) <= 1.01 * check_param['norm_bound']['nn'] \
+                        and FLModelParamUtils.cosine(delta, check_param['pivot']) >= max(0.0,
+                                                                                         check_param['cosine_bound'])
             else:
-                raise ValueError("not implemented!")
+                raise ValueError("Wrong check predicate!")
         if check_type == 'prob_zkp':
-            if check_param['pred'] == 'l2norm':
+            if check_param['pred'] in ['l2norm', 'sphere']:
                 if not isinstance(check_param['norm_bound'], dict):
                     if FLModelParamUtils.l2norm(delta) <= 1.01 * check_param['norm_bound']:
                         return True
@@ -225,14 +230,30 @@ class SyncServer(ISyncServer):
                         return True
                     ratio = FLModelParamUtils.l2norm_nn(delta) / check_param['norm_bound']['nn']
                     ratio = ratio.item()
-
+                from scipy.stats import chi2
+                import random
+                prob = chi2.cdf(1701.7372838684747 / (ratio * ratio), df=1000)
+                return random.random() < prob
+            elif check_param == 'cosine':
+                if not isinstance(check_param['norm_bound'], dict):
+                    if FLModelParamUtils.l2norm(delta) <= 1.01 * check_param['norm_bound'] \
+                            and FLModelParamUtils.cosine(delta, check_param['pivot']) >= max(0.0, check_param['cosine_bound']):
+                        return True
+                    ratio = FLModelParamUtils.l2norm(delta) / check_param['norm_bound']
+                    ratio = ratio.item()
+                else:
+                    if FLModelParamUtils.l2norm_nn(delta) <= 1.01 * check_param['norm_bound']['nn'] \
+                            and FLModelParamUtils.cosine(delta, check_param['pivot']) >= max(0.0, check_param['cosine_bound']):
+                        return True
+                    ratio = FLModelParamUtils.l2norm_nn(delta) / check_param['norm_bound']['nn']
+                    ratio = ratio.item()
                 from scipy.stats import chi2
                 import random
                 prob = chi2.cdf(1701.7372838684747 / (ratio * ratio), df=1000)
                 return random.random() < prob
 
             else:
-                raise ValueError("not implemented!")
+                raise ValueError("Wrong check predicate!")
         raise ValueError("Wrong check type!")
 
     ### yizheng 20231025 add checks
