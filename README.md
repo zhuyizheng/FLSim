@@ -31,7 +31,7 @@ Description of parameters:
   - `cosine`: check if the L2 norm of model update is bounded by a specified value and the cosine similarity of the model update and a pivot vector is bigger than a specified value
 - `--norm-bound`: This parameter applies if `--dataset organamnist`. The corresponding CNN model does not have batch norm layers. If `--pred l2norm` or `--pred cosine`, the L2 norm bound of the model update; if `--pred sphere`, the distance bound
 - `--norm-bound-nn`, `--norm-bound-running-mean`, `--norm-bound-running-var`: These parameters applies if `--dataset organsmnist` or `--dataset forest`. The corresponding ResNet18 model or TabNet model has batch norm layers. The model update of neural network parameters and `*_running_mean`, `*_running_var` tensors from batch norm layers must be treated separately. If `--pred l2norm` or `--pred cosine`, the L2 norm bound of the model update; if `--pred sphere`, the distance bound
-- `--local-optimizer`: The optimizers used on each client's local training
+- `--local-optimizer`: The optimizers used on each client's local training. Choose from `sgd`, `adam`
 - `--local-batch-size`: The batch size used on each client's local training
 - `--local-epochs`: The number of epochs used on each client's local training
 - `--epochs`: The number of global epochs
