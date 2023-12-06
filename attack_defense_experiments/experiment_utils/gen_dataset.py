@@ -1,4 +1,4 @@
-# reused code from https://github.com/dreamquark-ai/tabnet/blob/develop/forest_example.ipynb
+# uses code from https://github.com/dreamquark-ai/tabnet/blob/develop/forest_example.ipynb
 
 
 import torch

@@ -1,4 +1,4 @@
-# reused code from https://github.com/zhuyizheng/FLSim/blob/main/tutorials/cifar10_tutorial.ipynb
+# uses code from https://github.com/zhuyizheng/FLSim/blob/main/tutorials/cifar10_tutorial.ipynb
 # original in https://github.com/facebookresearch/FLSim/blob/main/tutorials/cifar10_tutorial.ipynb
 
 import numpy as np

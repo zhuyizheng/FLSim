@@ -7,7 +7,6 @@ from flsim.utils.example_utils import SimpleConvNet
 from pytorch_tabnet.augmentations import ClassificationSMOTE
 from pytorch_tabnet.tab_model import TabNetClassifier
 
-from flsim.utils.example_utils import FLModel
 
 def gen_global_model(args, extra_info, USE_CUDA=True):
     cuda_enabled = torch.cuda.is_available() and USE_CUDA

@@ -1,3 +1,5 @@
+# uses code from https://github.com/zhuyizheng/FLSim/blob/main/tutorials/cifar10_tutorial.ipynb
+
 def args_to_json(args):
     assert args.local_optimizer in ['sgd', 'adam']
     json_config = {
