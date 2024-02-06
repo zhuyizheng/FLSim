@@ -369,19 +369,19 @@ class FLModelParamUtils:
             unit_length = norm_bound / (2 ** bit)
             with torch.no_grad():
                 for name, global_param in global_params.items():
-                    global_param.data *= torch.round(global_param.data / unit_length) * unit_length
+                    global_param.data = torch.round(global_param.data / unit_length) * unit_length
         else:
             unit_length = {key: norm_bound[value] / (2 ** bit) for key, value in norm_bound}
             with torch.no_grad():
                 for name, global_param in global_params.items():
                     if name.endswith('running_mean'):
                         if 'running_mean' in norm_bound:
-                            global_param.data *= torch.round(global_param.data / unit_length['running_mean']) * unit_length['running_mean']
+                            global_param.data = torch.round(global_param.data / unit_length['running_mean']) * unit_length['running_mean']
                     elif name.endswith('running_var'):
                         if 'running_var' in norm_bound:
-                            global_param.data *= torch.round(global_param.data / unit_length['running_var']) * unit_length['running_var']
+                            global_param.data = torch.round(global_param.data / unit_length['running_var']) * unit_length['running_var']
                     else:
-                        global_param.data *= torch.round(global_param.data / unit_length['nn']) * unit_length['nn']
+                        global_param.data = torch.round(global_param.data / unit_length['nn']) * unit_length['nn']
 
         cls.load_state_dict(model_to_save, global_params, only_federated_params)
 
