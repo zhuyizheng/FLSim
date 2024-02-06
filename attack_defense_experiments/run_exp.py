@@ -74,6 +74,7 @@ final_model, eval_score = trainer.train(
                      'running_mean': args.norm_bound_running_mean,
                      'running_var': args.norm_bound_running_var},
                  },
+    bit=args.bit,
 )
 
 trainer.test(

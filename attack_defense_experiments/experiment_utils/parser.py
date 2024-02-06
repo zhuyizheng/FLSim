@@ -1,6 +1,10 @@
 import argparse
 
-default_common_args = {'num_cl': 100, 'max_mal': 10, 'attack': 'no_attack', 'scale_factor': 10, 'check': 'no_check', 'pred': 'l2norm', 'gpu': 0}
+default_common_args = {'num_cl': 100, 'max_mal': 10,
+                       'attack': 'no_attack', 'scale_factor': 10,
+                       'check': 'no_check', 'pred': 'l2norm',
+                       'gpu': 0,
+                       'bit': 32}
 default_args = {'organamnist': {'lr': 5.0, 'momentum': 0.9,
                                 'local_lr': 0.01, 'noise_std': 0.1, 'label_1': 5, 'label_2': 9,
                                 'norm_bound': 0.2,
@@ -59,6 +63,7 @@ def parse_args(default_args=default_args):
     parser.add_argument("--epochs", type=int, help="number of epochs", default=default_args_on_dataset['epochs'])
 
     parser.add_argument("--gpu", type=int, help="gpu number", default=default_args_on_dataset['gpu'])
+    parser.add_argument("--bit", type=int, help="bit length", default=default_args_on_dataset['bit'])
 
     args2 = parser.parse_args(remaining_argv)
     args2.dataset = args.dataset
@@ -106,3 +111,4 @@ def print_args(args):
     print("epochs:", args.epochs)
 
     print("run on gpu:", args.gpu)
+    print("bit length:", args.bit)

@@ -137,6 +137,7 @@ class Client:
         attack_param=None,
         check_type=None,
         check_param=None,
+        bit=32,
         metrics_reporter: Optional[IFLMetricsReporter] = None
     ) -> Tuple[IFLModel, float]:
         """Wrapper around all functions called on a client for generating an updated
@@ -175,14 +176,14 @@ class Client:
             print("delta norm running mean before:", self.l2norm_running_mean(delta).item())
             print("delta norm running var before:", self.l2norm_running_var(delta).item())
 
+        if check_param is None:
+            norm_bound = 1.0
+        else:
+            norm_bound = check_param['norm_bound']
 
         if attack_type == 'no_attack':
             # print("no attack")
             # print("*** normalizing delta! ***")
-            if check_param is None:
-                norm_bound = 1.0
-            else:
-                norm_bound = check_param['norm_bound']
             # delta = self.trim_delta(model_to_save=delta, norm_bound=check_param['norm_bound'])
             delta = self.trim_delta(model_to_save=delta, norm_bound=norm_bound)
             # print("delta norm after:", self.l2norm(delta).item())
@@ -212,6 +213,9 @@ class Client:
             pass
         else:
             raise ValueError("attack_type incorrect!")
+
+        # 20240206 round delta to fixed-bit integer
+        delta = self.round_delta(model_to_save=delta, norm_bound=norm_bound, bit=bit)
 
         # 6. Track the state of the client
         self.track(delta=delta, weight=weight, optimizer=optimizer)
@@ -325,9 +329,16 @@ class Client:
     # yizheng 20231024 trim model (norm_bound > 0)
     # yizheng 20231121 running mean and running var layers
     def trim_delta(self, model_to_save: IFLModel, norm_bound) -> IFLModel:
-        """Normalizes the delta to L2 norm 1"""
+        """Normalizes the delta to L2 norm norm_bound"""
         FLModelParamUtils.trim_model(model_to_save.fl_get_module(), norm_bound)
         return model_to_save
+
+    # yizheng 20240206 round model update
+    def round_delta(self, model_to_save: IFLModel, norm_bound, bit) -> IFLModel:
+        """round the delta fixed bit integer"""
+        FLModelParamUtils.round_model(model_to_save.fl_get_module(), norm_bound, bit)
+        return model_to_save
+
 
     # yizheng 20231025 add noise to model
     def add_noise_to_delta(self, model_to_save: IFLModel, noise_std) -> IFLModel:

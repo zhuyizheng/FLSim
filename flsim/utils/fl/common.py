@@ -264,7 +264,7 @@ class FLModelParamUtils:
         scale_factor,
         only_federated_params: bool = False,
     ) -> None:
-        """sets model_to_save to have norm = 1"""
+        """scale model_to_save by scale_factor"""
         global_params = cls.get_state_dict(model_to_save, only_federated_params)
 
         if not isinstance(scale_factor, dict):
@@ -335,7 +335,7 @@ class FLModelParamUtils:
         norm_bound,
         only_federated_params: bool = False,
     ) -> None:
-        """sets model_to_save to have norm = 1"""
+        """sets model_to_save to have norm = norm_bound"""
 
         if not isinstance(norm_bound, dict):
             norm = cls.l2norm(model_to_save, only_federated_params)
@@ -352,6 +352,38 @@ class FLModelParamUtils:
             scale_factor['running_var'] = norm_bound['running_var'] / torch.clamp(norm_running_var + eps, min=norm_bound['running_var'])
             cls.scale_model(model_to_save, scale_factor)
 
+    # yizheng 20240206 round model update to fixed bit integer
+    @classmethod
+    def round_model(
+        cls,
+        model_to_save: nn.Module,
+        norm_bound,
+        bit,
+        only_federated_params: bool = False,
+    ) -> None:
+        """round model updates to fixed bit integer"""
+
+        global_params = cls.get_state_dict(model_to_save, only_federated_params)
+
+        if not isinstance(norm_bound, dict):
+            unit_length = norm_bound / (2 ** bit)
+            with torch.no_grad():
+                for name, global_param in global_params.items():
+                    global_param.data *= torch.round(global_param.data / unit_length) * unit_length
+        else:
+            unit_length = {key: norm_bound[value] / (2 ** bit) for key, value in norm_bound}
+            with torch.no_grad():
+                for name, global_param in global_params.items():
+                    if name.endswith('running_mean'):
+                        if 'running_mean' in norm_bound:
+                            global_param.data *= torch.round(global_param.data / unit_length['running_mean']) * unit_length['running_mean']
+                    elif name.endswith('running_var'):
+                        if 'running_var' in norm_bound:
+                            global_param.data *= torch.round(global_param.data / unit_length['running_var']) * unit_length['running_var']
+                    else:
+                        global_param.data *= torch.round(global_param.data / unit_length['nn']) * unit_length['nn']
+
+        cls.load_state_dict(model_to_save, global_params, only_federated_params)
 
     # yizheng 20231025 add noise to model
     @classmethod

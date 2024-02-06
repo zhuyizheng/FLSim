@@ -163,6 +163,7 @@ class SyncTrainer(FLTrainer):
         attack_param=None,
         check_type=None,
         check_param=None,
+        bit: int = 32,
     ) -> Tuple[IFLModel, Any]:
         """Trains and evaluates the model, modifying the model state. Iterates over the
         number of epochs specified in the config, and for each epoch iterates over the
@@ -280,6 +281,7 @@ class SyncTrainer(FLTrainer):
                     attack_param=attack_param,
                     check_type=check_type,
                     check_param=check_param,
+                    bit=bit,
                     metrics_reporter=metrics_reporter
                     if self.cfg.report_train_metrics
                     else None,
@@ -431,6 +433,7 @@ class SyncTrainer(FLTrainer):
         attack_param = None,
         check_type = None,
         check_param = None,
+        bit = 32,
         metrics_reporter: Optional[IFLMetricsReporter] = None,
     ) -> None:
         """Update each client-side model from server message with malicious updates."""
@@ -444,6 +447,7 @@ class SyncTrainer(FLTrainer):
                     attack_param=attack_param,
                     check_type=check_type,
                     check_param=check_param,
+                    bit=bit,
                     metrics_reporter=metrics_reporter,
                 )
             else:
@@ -453,6 +457,7 @@ class SyncTrainer(FLTrainer):
                     attack_type='no_attack',
                     check_type=check_type,
                     check_param=check_param,
+                    bit=bit,
                     metrics_reporter=metrics_reporter,
                 )
                 if client_id == 0:
@@ -471,6 +476,7 @@ class SyncTrainer(FLTrainer):
         attack_param=None,
         check_type=None,
         check_param=None,
+        bit=32,
         metrics_reporter: Optional[IFLMetricsReporter] = None,
     ) -> None:
         """Trains the global model for one training round.
@@ -498,6 +504,7 @@ class SyncTrainer(FLTrainer):
             attack_param=attack_param,
             check_type=check_type,
             check_param=check_param,
+            bit=bit,
             metrics_reporter=metrics_reporter,
         )
         # print("_train_one_round_apply_updates() end")
@@ -530,6 +537,7 @@ class SyncTrainer(FLTrainer):
         attack_param=None,
         check_type=None,
         check_param=None,
+        bit=32,
         metrics_reporter: Optional[IFLMetricsReporter] = None,
     ) -> Optional[List[Metric]]:
         """Apply updates to client and server models during train one round.
@@ -559,6 +567,7 @@ class SyncTrainer(FLTrainer):
             attack_param=attack_param,
             check_type=check_type,
             check_param=check_param,
+            bit=bit,
             metrics_reporter=metrics_reporter,
         )
         self.logger.info(f"Collecting round's clients took {time() - t} s.")
