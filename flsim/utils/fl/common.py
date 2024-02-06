@@ -371,7 +371,7 @@ class FLModelParamUtils:
                 for name, global_param in global_params.items():
                     global_param.data = torch.round(global_param.data / unit_length) * unit_length
         else:
-            unit_length = {key: norm_bound[value] / (2 ** bit) for key, value in norm_bound}
+            unit_length = {key: value / (2 ** bit) for key, value in norm_bound.items()}
             with torch.no_grad():
                 for name, global_param in global_params.items():
                     if name.endswith('running_mean'):
