@@ -53,9 +53,9 @@ def parse_args(default_args=default_args):
     if not has_batch_norm_layer(args.dataset):
         parser.add_argument("--norm-bound", type=float, help="l2 norm bound of l2norm check or cosine check", default=default_args_on_dataset['norm_bound'])
     else:
-        parser.add_argument("--norm-bound-nn", type=float, help="nn l2 norm bound of l2norm check or cosine check", default=25.0)
-        parser.add_argument("--norm-bound-running-mean", type=float, help="running mean l2 norm bound of l2norm check or cosine check", default=100000000)
-        parser.add_argument("--norm-bound-running-var", type=float, help="running var l2 norm bound of l2norm check or cosine check", default=100000000)
+        parser.add_argument("--norm-bound-nn", type=float, help="nn l2 norm bound of l2norm check or cosine check", default=default_args_on_dataset['norm_bound_nn'])
+        parser.add_argument("--norm-bound-running-mean", type=float, help="running mean l2 norm bound of l2norm check or cosine check", default=default_args_on_dataset['norm_bound_running_mean'])
+        parser.add_argument("--norm-bound-running-var", type=float, help="running var l2 norm bound of l2norm check or cosine check", default=default_args_on_dataset['norm_bound_running_var'])
 
     parser.add_argument("--local-optimizer", type=str, help="local optimizer", default=default_args_on_dataset['local_optimizer'])
     parser.add_argument("--local-batch-size", type=int, help="local batch size", default=default_args_on_dataset['local_batch_size'])
