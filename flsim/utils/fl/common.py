@@ -379,7 +379,7 @@ class FLModelParamUtils:
                             global_param.data = torch.round(global_param.data / unit_length['running_mean']) * unit_length['running_mean']
                     elif name.endswith('running_var'):
                         if 'running_var' in norm_bound:
-                            global_param.data = torch.round(global_param.data / unit_length['running_var']) * unit_length['running_var']
+                            global_param.data = torch.trunc(global_param.data / unit_length['running_var']) * unit_length['running_var']
                     else:
                         global_param.data = torch.round(global_param.data / unit_length['nn']) * unit_length['nn']
 
