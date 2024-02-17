@@ -36,3 +36,4 @@ Description of parameters:
 - `--local-epochs`: The number of epochs used on each client's local training
 - `--epochs`: The number of global epochs
 - `--gpu`: The id of the GPU to train on (if GPU is available) 
+- `--bit`: The bit-length of fixed-point integers that encode model updates 
